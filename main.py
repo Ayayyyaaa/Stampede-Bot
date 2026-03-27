@@ -1,8 +1,11 @@
 import discord
 from discord.ext import commands
+import os
 from random import randint, choice, sample
 from discord.ext.commands import has_permissions, MissingPermissions
+from dotenv import load_dotenv
 
+load_dotenv()
 intents = discord.Intents.default()
 intents.message_content = True  
 intents.members = True 
@@ -62,5 +65,5 @@ async def on_raw_reaction_add(payload):
     except discord.HTTPException as e:
         print(f"Erreur discord : {e}")
 
-
-bot.run('MTQ4NzA4MzEyMDYwNzEwNTA2NQ.GF56Xe.kg9L6FfwqxGFFuuZTivqa-QDW_FYWVOvg_XHkg')
+TOKEN = os.getenv("DISCORD_TOKEN")
+bot.run(TOKEN)
