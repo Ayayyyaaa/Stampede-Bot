@@ -21,6 +21,9 @@ SALON_ANNONCE_ID = 1487046656783548416
 @bot.event
 async def on_ready():
     print(f"✅ Connecté en tant que {bot.user}")
+    if not annonce_vendredi.is_running():
+        annonce_vendredi.start()
+        print("⏱️ Tâche des annonces démarrée !")
     try:
         await bot.tree.sync()
         print("✅ Bot en ligne.")
