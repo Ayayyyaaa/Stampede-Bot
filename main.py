@@ -83,14 +83,31 @@ async def on_message(message):
 
 @bot.tree.command(name="rule_mechs", description="Show the rules for mechs events")
 async def rule(interaction: discord.Interaction):
-    texte_regles = (
-        "📜 **Rules of the Mech Event in Stampede Of Fury** 📜\n\n"
+    nom_image = "resources/eventmechas.png"
+    nom_image2 = "resources/tapforce.png"
+    FICHIER = discord.File(nom_image, filename=nom_image)
+    FICHIER2 = discord.File(nom_image2, filename=nom_image2)
+    embed = discord.Embed(
+        title= "<:mech:1487235216681599107> Rules of the Mech Event in Stampede Of Fury <:mech:1487235216681599107>", # Titre cliquable si vous ajoutez url="https://..."
+        description=(
         "**1 -** Dont kill mechs 200 and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs -> if you have any gold phones you can't use, convert them to gray phones\n"
         "**3 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
-        "**4 -** Enjoy ! <:netero_heart:1441402964483903540>"
+        "**4 -** Enjoy ! <:Bosstickets:1487196821045645413>"
+    ),
+        color=discord.Color.red(),
+        timestamp=datetime.datetime.now()
     )
-    await interaction.response.send_message(texte_regles)
+    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145>", inline=True) 
+    embed.add_field(name="🎯 Objectives", value="100 pops per person, we can reach the 3000 !", inline=False)
+
+    embed.set_thumbnail(url=f"attachment://{nom_image2}") 
+    embed.set_image(url=f"attachment://{nom_image}")
+
+    embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    embed.set_footer(text="Stampede Of Fury !")
+
+    await interaction.response.send_message(embed=embed, files=[FICHIER2, FICHIER])
 
 
 @bot.tree.command(name="rule_smash", description="Show the rules for smash events")
