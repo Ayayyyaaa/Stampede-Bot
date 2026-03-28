@@ -124,7 +124,7 @@ async def rule_smash(interaction: discord.Interaction):
         "**3 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! 🎉\n"
         "**5 -** Enjoy ! <:netero_heart:1441402964483903540>"
     ),
-        color=discord.Color.red(),
+        color=discord.Color.gold(),
         timestamp=datetime.datetime.now()
     )
     embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145>", inline=True) 
