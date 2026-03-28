@@ -116,7 +116,7 @@ async def rule_smash(interaction: discord.Interaction):
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
     embed = discord.Embed(
-        title= "<:mech:1487413876139102358> Rules of the Mech Event in Stampede Of Fury <:mech:1487413876139102358>", # Titre cliquable si vous ajoutez url="https://..."
+        title= "<:mech:1487413876139102358> Rules of the Smash Event in Stampede Of Fury <:mech:1487413876139102358>", # Titre cliquable si vous ajoutez url="https://..."
         description=(
         "**1 -** Buy tickets at least once a day <:Pvpticket:1487183172134371388>\n"
         "**2 -** Use yours PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166> \n"
