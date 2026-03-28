@@ -82,13 +82,13 @@ async def on_message(message):
 
 
 @bot.tree.command(name="rule_mechs", description="Show the rules for mechs events")
-async def rule(interaction: discord.Interaction):
+async def rule_mech(interaction: discord.Interaction):
     nom_image = "resources/eventmechas.png"
     nom_image2 = "resources/tapforce.png"
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
     embed = discord.Embed(
-        title= "<:mech:1487235216681599107> Rules of the Mech Event in Stampede Of Fury <:mech:1487235216681599107>", # Titre cliquable si vous ajoutez url="https://..."
+        title= "<:mech:1487413876139102358> Rules of the Mech Event in Stampede Of Fury <:mech:1487413876139102358>", # Titre cliquable si vous ajoutez url="https://..."
         description=(
         "**1 -** Dont kill mechs 200 and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs -> if you have any gold phones you can't use, convert them to gray phones\n"
@@ -109,50 +109,61 @@ async def rule(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, files=[FICHIER2, FICHIER])
 
-
 @bot.tree.command(name="rule_smash", description="Show the rules for smash events")
-async def rule(interaction: discord.Interaction):
-    texte_regles = (
-        "📜 **Rules of the Smash Event in Stampede Of Fury** 📜\n\n"
+async def rule_smash(interaction: discord.Interaction):
+    nom_image = "resources/smashevent.png"
+    nom_image2 = "resources/tapforce.png"
+    FICHIER = discord.File(nom_image, filename=nom_image)
+    FICHIER2 = discord.File(nom_image2, filename=nom_image2)
+    embed = discord.Embed(
+        title= "<:mech:1487413876139102358> Rules of the Mech Event in Stampede Of Fury <:mech:1487413876139102358>", # Titre cliquable si vous ajoutez url="https://..."
+        description=(
         "**1 -** Buy tickets at least once a day <:Pvpticket:1487183172134371388>\n"
         "**2 -** Use yours PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166> \n"
         "**3 -** Attack the boss once a day\n"
         "**3 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! 🎉\n"
         "**5 -** Enjoy ! <:netero_heart:1441402964483903540>"
+    ),
+        color=discord.Color.red(),
+        timestamp=datetime.datetime.now()
     )
-    await interaction.response.send_message(texte_regles)
+    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145>", inline=True) 
+    embed.add_field(name="🎯 Objectives", value="Follow the strategy, you can reach the 400 smash point !", inline=False)
+
+    embed.set_thumbnail(url=f"attachment://{nom_image2}") 
+    embed.set_image(url=f"attachment://{nom_image}")
+
+    embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    embed.set_footer(text="Stampede Of Fury !")
+
+    await interaction.response.send_message(embed=embed, files=[FICHIER2, FICHIER])
+
 
 
 heure_envoi = datetime.time(hour=0, minute=0, tzinfo=ZoneInfo("Europe/Paris"))
-bot.utiliser_annonce_1 = True 
+bot.utiliser_annonce_smash = True
 
 @tasks.loop(time=heure_envoi)
 async def annonce_vendredi():
     if datetime.datetime.now(ZoneInfo("Europe/Paris")).weekday() != 4:
         return
+        
     salon = bot.get_channel(SALON_ANNONCE_ID)
     if not salon:
         print("Erreur : Salon d'annonce introuvable.")
         return
-    if bot.utiliser_annonce_1:
-        message = (
-        "📜 **Smash Event is comming, so here a quick reminder of the rules <@&1378019701484945599>** 📜\n\n"
-        "**1 -** Buy tickets at least once a day <:Pvpticket:1487183172134371388>\n"
-        "**2 -** Use yours PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166> \n"
-        "**3 -** Attack the boss once a day\n"
-        "**3 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! 🎉\n"
-        "**5 -** Enjoy and do your best ! <:netero_heart:1441402964483903540>"
-    )
+
+    message_texte = "📣 **Event is coming ! Here is a quick reminder of the rules** <@&1378019701484945599>"
+    
+
+    if bot.utiliser_annonce_smash:
+        mon_embed, mes_fichiers = rule_smash()
     else:
-        message = (
-        "📜 **Mech EVent is comming, so here a quick reminder of the rules <@&1378019701484945599>** 📜\n\n"
-        "**1 -** Dont kill mechs 200 and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
-        "**2 -** Always buy the daily 500 gem phone packs -> if you have any gold phones you can't use, convert them to gray phones\n"
-        "**3 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
-        "**4 -** Enjoy and do your best ! <:netero_heart:1441402964483903540>"
-    )
-    await salon.send(message)
-    bot.utiliser_annonce_1 = not bot.utiliser_annonce_1
+        mon_embed, mes_fichiers = rule_mech()
+
+    await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
+
+    bot.utiliser_annonce_smash = not bot.utiliser_annonce_smash
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
