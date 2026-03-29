@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from discord.ext import tasks
 import datetime
 from zoneinfo import ZoneInfo
+import re
 
 load_dotenv()
 intents = discord.Intents.default()
@@ -76,7 +77,10 @@ async def on_message(message):
                 await message.add_reaction(emoji)
             except discord.HTTPException:
                 pass 
-    if '67' in contenu_minuscule:
+    contenu_minuscule = contenu_minuscule.replace('-','')
+    contenu_minuscule = contenu_minuscule.replace('/','')
+    contenu_minuscule = contenu_minuscule.replace('_','')
+    if re.search(r'\b67\b', contenu_minuscule):
         await message.channel.send('https://klipy.com/gifs/cat-67')
     await bot.process_commands(message)
 
@@ -91,7 +95,7 @@ async def rule_mech(interaction: discord.Interaction):
         title= "<:mech:1487413876139102358> Rules of the Mech Event in Stampede Of Fury <:mech:1487413876139102358>", # Titre cliquable si vous ajoutez url="https://..."
         description=(
         "**1 -** Dont kill mechs 200 and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
-        "**2 -** Always buy the daily 500 gem phone packs -> if you have any gold phones you can't use, convert them to gray phones\n"
+        "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones you can't use, convert them to gray phones\n"
         "**3 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
         "**4 -** Enjoy ! <:Bosstickets:1487196821045645413>"
     ),
@@ -128,7 +132,7 @@ async def rule_smash(interaction: discord.Interaction):
         timestamp=datetime.datetime.now()
     )
     embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145>", inline=True) 
-    embed.add_field(name="🎯 Objectives", value="Follow the strategy, you can reach the 400 smash point !", inline=False)
+    embed.add_field(name="🎯 Objectives", value="Follow the strategy, you can reach the 400 smash point ! <:smashpoint:1487425123718795367>", inline=False)
 
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
     embed.set_image(url=f"attachment://{nom_image}")
