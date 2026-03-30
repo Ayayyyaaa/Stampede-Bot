@@ -97,7 +97,7 @@ async def rule_mech(interaction: discord.Interaction):
         "**1 -** Dont kill mechs 200 and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones you can't use, convert them to gray phones\n"
         "**3 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
-        "**4 -** Enjoy ! <:netero_heart:1441402964483903540> <:rajagif:1488129905991352422>"
+        "**4 -** Enjoy ! <:netero_heart:1441402964483903540> <a:rajagif:1488129905991352422>"
     ),
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
