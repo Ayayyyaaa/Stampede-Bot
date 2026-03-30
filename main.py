@@ -51,9 +51,9 @@ async def on_raw_reaction_add(payload):
     react_author = guild.get_member(payload.user_id)
     if not react_author:
         return
-    lead = any(role.id == colead for role in react_author.roles)
-    if not lead:
-        return
+    #lead = any(role.id == colead for role in react_author.roles)
+    #if not lead:
+    #    return
     
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
