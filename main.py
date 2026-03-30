@@ -104,9 +104,7 @@ async def on_message(message):
         await message.channel.send('https://klipy.com/gifs/cat-67')
     await bot.process_commands(message)
 
-
-@bot.tree.command(name="rule_mechs", description="Show the rules for mechs events")
-async def rule_mech(interaction: discord.Interaction):
+def creer_embed_mech():
     nom_image = "resources/eventmechas.png"
     nom_image2 = "resources/tapforce.png"
     FICHIER = discord.File(nom_image, filename=nom_image)
@@ -129,13 +127,11 @@ async def rule_mech(interaction: discord.Interaction):
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
     embed.set_image(url=f"attachment://{nom_image}")
 
-    embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
     embed.set_footer(text="Stampede Of Fury !")
 
-    await interaction.response.send_message(embed=embed, files=[FICHIER2, FICHIER])
+    return embed, [FICHIER2, FICHIER]
 
-@bot.tree.command(name="rule_smash", description="Show the rules for smash events")
-async def rule_smash(interaction: discord.Interaction):
+def creer_embed_smash():
     nom_image = "resources/smashevent.png"
     nom_image2 = "resources/tapforce.png"
     FICHIER = discord.File(nom_image, filename=nom_image)
@@ -158,11 +154,21 @@ async def rule_smash(interaction: discord.Interaction):
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
     embed.set_image(url=f"attachment://{nom_image}")
 
-    embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
     embed.set_footer(text="Stampede Of Fury !")
 
-    await interaction.response.send_message(embed=embed, files=[FICHIER2, FICHIER])
+    return embed, [FICHIER2, FICHIER]
 
+@bot.tree.command(name="rule_mechs", description="Show the rules for mechs events")
+async def rule_mech(interaction: discord.Interaction):
+    embed, fichiers = creer_embed_mech()
+    embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    await interaction.response.send_message(embed=embed, files=fichiers)
+
+@bot.tree.command(name="rule_smash", description="Show the rules for smashs events")
+async def rule_mech(interaction: discord.Interaction):
+    embed, fichiers = creer_embed_smash()
+    embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+    await interaction.response.send_message(embed=embed, files=fichiers)
 
 
 heure_envoi = datetime.time(hour=0, minute=0, tzinfo=ZoneInfo("Europe/Paris"))
@@ -175,19 +181,18 @@ async def annonce_vendredi():
         
     salon = bot.get_channel(SALON_ANNONCE_ID)
     if not salon:
-        print("Erreur : Salon d'annonce introuvable.")
         return
 
     message_texte = "📣 **Event is coming ! Here is a quick reminder of the rules** <@&1378019701484945599>"
     
-
+    # Tu appelles tes nouvelles fonctions ici !
     if bot.utiliser_annonce_smash:
-        mon_embed, mes_fichiers = rule_smash()
+        # Fais pareil pour creer_embed_smash()
+        mon_embed, mes_fichiers = creer_embed_smash() 
     else:
-        mon_embed, mes_fichiers = rule_mech()
+        mon_embed, mes_fichiers = creer_embed_mech()
 
     await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
-
     bot.utiliser_annonce_smash = not bot.utiliser_annonce_smash
 
 @bot.event
@@ -201,7 +206,7 @@ async def on_message_delete(message):
 
     # Par défaut, on suppose que l'utilisateur a supprimé son propre message
     # (Discord ne génère PAS de log d'audit si on supprime son propre message)
-    suppresseur = 'message.author'
+    suppresseur = message.author
 
     if message.guild:
         # Pause d'une seconde et demie car l'API de Discord a souvent un léger délai
