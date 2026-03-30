@@ -199,40 +199,44 @@ async def on_message_delete(message):
     if not salon_log:
         return
 
+    # Par défaut, on suppose que l'utilisateur a supprimé son propre message
+    # (Discord ne génère PAS de log d'audit si on supprime son propre message)
     suppresseur = message.author
 
     if message.guild:
-        for tentative in range(5):
-            await asyncio.sleep(1)
-            try:
-                async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=1):
-
-                    if entree.target.id == message.author.id:
-
-                        temps_ecoule = datetime.datetime.now(datetime.timezone.utc) - entree.created_at
-                        if temps_ecoule.total_seconds() < 10:
-                            suppresseur = entree.user
-                            break 
-                            
-                if suppresseur != message.author:
-                    break
+        # Pause d'une seconde et demie car l'API de Discord a souvent un léger délai
+        await asyncio.sleep(1.5)
+        
+        try:
+            # On cherche dans les 5 derniers logs au cas où plusieurs actions ont lieu en même temps
+            async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=5):
+                # On vérifie si la cible du log d'audit est bien l'auteur du message supprimé
+                if entree.target.id == message.author.id:
+                    # Utilisation de discord.utils.utcnow() pour être 100% compatible avec les datetimes de dpy
+                    temps_ecoule = discord.utils.utcnow() - entree.created_at
                     
-            except discord.Forbidden:
-                print("Erreur : Le bot n'a pas la permission 'Voir les logs d'audit' !")
-                break
+                    # Si le log a moins de 15 secondes, on est sûr que c'est le bon
+                    if temps_ecoule.total_seconds() < 15:
+                        suppresseur = entree.user
+                        break 
+                        
+        except discord.Forbidden:
+            print("❌ Erreur : Le bot n'a pas la permission 'Voir les logs d'audit' (View Audit Log) sur le serveur !")
 
     embed = discord.Embed(
         title="🗑️ Deleted Message",
-        description=message.content or "*None*",
+        description=message.content or "*Message sans texte (image, embed...)*",
         color=discord.Color.red(),
         timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
     )
 
     embed.add_field(name="Author", value=message.author.mention, inline=True)
+    
+    # Si le suppresseur est l'auteur, on affiche "Himself"
     nom_suppresseur = "Himself" if suppresseur == message.author else suppresseur.mention
     embed.add_field(name="Deleted by", value=nom_suppresseur, inline=True)
-    embed.add_field(name="Channel", value=message.channel.mention, inline=False)
     
+    embed.add_field(name="Channel", value=message.channel.mention, inline=False)
     embed.set_thumbnail(url=message.author.display_avatar.url)
     
     await salon_log.send(embed=embed)
