@@ -205,8 +205,8 @@ async def on_message_delete(message):
         timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
     )
     
-    embed.add_field(name="Auteur", value=f"{message.author.mention} ({message.author.name})", inline=True)
-    embed.add_field(name="Salon d'origine", value=message.channel.mention, inline=True)
+    embed.add_field(name="Author", value=f"{message.author.mention} ({message.author.name})", inline=True)
+    embed.add_field(name="Channel", value=message.channel.mention, inline=True)
 
     embed.set_thumbnail(url=message.author.display_avatar.url)
 
