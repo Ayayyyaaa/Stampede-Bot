@@ -116,12 +116,12 @@ def creer_embed_mech():
         "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
         "**3 -** Always allow the spawner to get the first hit unless 5 minutes pass <a:research:1488144464835776622>\n"
         "**4 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
-        "**5 -** Enjoy ! <:netero_heart:1441402964483903540>"
+        "**5 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
     ),
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145>", inline=True) 
+    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or **/setup_ticket** for customised optimisation by our moderators\n", inline=True) 
     embed.add_field(name="🎯 Objectives", value="100 pops per person, we can reach the 3000 !", inline=False)
 
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
@@ -143,12 +143,12 @@ def creer_embed_smash():
         "**2 -** Use yours PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166> \n"
         "**3 -** Attack the boss once a day\n"
         "**3 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! <:smashpoint:1487425123718795367>\n"
-        "**5 -** Enjoy ! <:netero_heart:1441402964483903540>"
+        "**5 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
     ),
         color=discord.Color.gold(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145>", inline=True) 
+    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or **/setup_ticket** for customised optimisation by our moderators\n", inline=True) 
     embed.add_field(name="🎯 Objectives", value="Follow the strategy, you can reach the 400 smash point ! <:smashpoint:1487425123718795367>", inline=False)
 
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
@@ -197,30 +197,20 @@ async def annonce_vendredi():
 
 @bot.event
 async def on_message_delete(message):
-    if message.author.bot:
-        return
-        
     salon_log = bot.get_channel(SALON_LOG_ID)
     if not salon_log:
         return
 
-    # Par défaut, on suppose que l'utilisateur a supprimé son propre message
-    # (Discord ne génère PAS de log d'audit si on supprime son propre message)
     suppresseur = message.author
 
     if message.guild:
-        # Pause d'une seconde et demie car l'API de Discord a souvent un léger délai
         await asyncio.sleep(3)
         
         try:
-            # On cherche dans les 5 derniers logs au cas où plusieurs actions ont lieu en même temps
             async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=5):
-                # On vérifie si la cible du log d'audit est bien l'auteur du message supprimé
                 if entree.target.id == message.author.id:
-                    # Utilisation de discord.utils.utcnow() pour être 100% compatible avec les datetimes de dpy
                     temps_ecoule = discord.utils.utcnow() - entree.created_at
-                    
-                    # Si le log a moins de 15 secondes, on est sûr que c'est le bon
+
                     if temps_ecoule.total_seconds() < 15:
                         suppresseur = entree.user
                         break 
