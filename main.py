@@ -53,7 +53,7 @@ async def on_raw_reaction_add(payload):
         return
     lead = any(role.id == colead for role in react_author.roles)
     if not lead:
-       return
+        return
     
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
