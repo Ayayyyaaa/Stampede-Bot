@@ -202,16 +202,18 @@ async def on_message_delete(message):
     suppresseur = message.author
 
     if message.guild:
-        for tentative in range(3):
+        for tentative in range(5):
             await asyncio.sleep(1)
             try:
                 async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=1):
-                    if entree.target.id == message.author.id and entree.extra.channel.id == message.channel.id:
+
+                    if entree.target.id == message.author.id:
+
                         temps_ecoule = datetime.datetime.now(datetime.timezone.utc) - entree.created_at
                         if temps_ecoule.total_seconds() < 10:
                             suppresseur = entree.user
                             break 
-
+                            
                 if suppresseur != message.author:
                     break
                     
