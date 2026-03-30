@@ -200,16 +200,24 @@ async def on_message_delete(message):
         return
 
     suppresseur = message.author
+
     if message.guild:
-        await asyncio.sleep(1)
-        
-        try:
-            async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=1):
-                if entree.target.id == message.author.id and entree.extra.channel.id == message.channel.id:
-                    suppresseur = entree.user
+        for tentative in range(3):
+            await asyncio.sleep(1)
+            try:
+                async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=1):
+                    if entree.target.id == message.author.id and entree.extra.channel.id == message.channel.id:
+                        temps_ecoule = datetime.datetime.now(datetime.timezone.utc) - entree.created_at
+                        if temps_ecoule.total_seconds() < 10:
+                            suppresseur = entree.user
+                            break 
+
+                if suppresseur != message.author:
                     break
-        except discord.Forbidden:
-            print("Erreur : Le bot n'a pas la permission 'Voir les logs d'audit' !")
+                    
+            except discord.Forbidden:
+                print("Erreur : Le bot n'a pas la permission 'Voir les logs d'audit' !")
+                break
 
     embed = discord.Embed(
         title="🗑️ Deleted Message",
@@ -218,9 +226,10 @@ async def on_message_delete(message):
         timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
     )
 
-    embed.add_field(name="Author ", value=message.author.mention, inline=True)
-    embed.add_field(name="Deleted by ", value=suppresseur.mention, inline=True)
-    embed.add_field(name="Channel ", value=message.channel.mention, inline=False)
+    embed.add_field(name="Author", value=message.author.mention, inline=True)
+    nom_suppresseur = "Himself" if suppresseur == message.author else suppresseur.mention
+    embed.add_field(name="Deleted by", value=nom_suppresseur, inline=True)
+    embed.add_field(name="Channel", value=message.channel.mention, inline=False)
     
     embed.set_thumbnail(url=message.author.display_avatar.url)
     
