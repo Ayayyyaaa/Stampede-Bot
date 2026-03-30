@@ -92,9 +92,9 @@ async def rule_mech(interaction: discord.Interaction):
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
     embed = discord.Embed(
-        title= "<:mech:1487413876139102358> Rules of the Mech Event in Stampede Of Fury <:mech:1487413876139102358>", # Titre cliquable si vous ajoutez url="https://..."
+        title= "<:mecha_icon:1488150151519535144> Rules of the Mech Event in Stampede Of Fury <:mecha_icon:1488150151519535144>", # Titre cliquable si vous ajoutez url="https://..."
         description=(
-        "**1 -** Dont kill mechs 200 <:lvl200mech:1488140189489692793> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
+        "**1 -** Dont kill mechs 200 <:lvlmecha:1488149380346286212> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
         "**3 -** Always allow the spawner to get the first hit unless 5 minutes pass <a:research:1488144464835776622>\n"
         "**4 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
