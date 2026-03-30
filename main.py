@@ -62,8 +62,8 @@ async def on_raw_reaction_add(payload):
     
     embed = discord.Embed(
         title="<:Raja:1488127825859838103> Welcome in Stampede Of Fury ! <:Raja:1488127825859838103>",
-        description=f"Congratulations **{auteur.display_name}**, you've been accepted by **{react_author.display_name}** !\nYou're now a SoF member !",
-        color=discord.Color.orange()
+        description=f"Congratulations **{auteur.display_name}**, you've been accepted by **{react_author.display_name}** !\nYou're now a SoF member !\n",
+        color=discord.Color.dark_purple()
     )
 
     if auteur.avatar:
@@ -71,7 +71,7 @@ async def on_raw_reaction_add(payload):
 
     embed.add_field(
         name="<a:research:1488144464835776622> Useful channels",
-        value="• Read the rules in <#1468349920237977690>\n• Ask your questions in <#1341156549858558145>",
+        value="• Read the rules in <#1468349920237977690>\n• Ask your questions in <#1341156549858558145>\n",
         inline=False
     )
     embed.add_field(
@@ -120,7 +120,7 @@ async def on_message(message):
         
     contenu_minuscule = message.content.lower()
 
-    words = {'aya' : ['✨'], 'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 'steel' : ['👑'], 'kazu' : ['🤮', '🅱️', '🅰️', '<:regional_indicator_n:>'], 'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 'drip' : ['👴']}
+    words = {'aya' : ['✨'], 'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 'steel' : ['👑'], 'kazu' : ['🤮', '🅱️', '🅰️', ':regional_indicator_n:'], 'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 'drip' : ['👴']}
     for mot, liste in words.items():
         if mot in contenu_minuscule:
             for emoji in liste:
