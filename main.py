@@ -8,6 +8,7 @@ from discord.ext import tasks
 import datetime
 from zoneinfo import ZoneInfo
 import re
+import asyncio
 
 load_dotenv()
 intents = discord.Intents.default()
@@ -193,23 +194,36 @@ async def annonce_vendredi():
 async def on_message_delete(message):
     if message.author.bot:
         return
-
+        
     salon_log = bot.get_channel(SALON_LOG_ID)
     if not salon_log:
         return
 
+    suppresseur = message.author
+    if message.guild:
+        await asyncio.sleep(1)
+        
+        try:
+            async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=1):
+                if entree.target.id == message.author.id and entree.extra.channel.id == message.channel.id:
+                    suppresseur = entree.user
+                    break
+        except discord.Forbidden:
+            print("Erreur : Le bot n'a pas la permission 'Voir les logs d'audit' !")
+
     embed = discord.Embed(
         title="🗑️ Deleted Message",
-        description=message.content,
+        description=message.content or "*None*",
         color=discord.Color.red(),
         timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
     )
+
+    embed.add_field(name="Author ", value=message.author.mention, inline=True)
+    embed.add_field(name="Deleted by ", value=suppresseur.mention, inline=True)
+    embed.add_field(name="Channel ", value=message.channel.mention, inline=False)
     
-    embed.add_field(name="Author", value=f"{message.author.mention} ({message.author.name})", inline=True)
-    embed.add_field(name="Channel", value=message.channel.mention, inline=True)
-
     embed.set_thumbnail(url=message.author.display_avatar.url)
-
+    
     await salon_log.send(embed=embed)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
