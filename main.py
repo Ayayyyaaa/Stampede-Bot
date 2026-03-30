@@ -110,7 +110,7 @@ def creer_embed_mech():
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
     embed = discord.Embed(
-        title= "<:mecha_icon:1488150151519535144> Rules of the Mech Event in Stampede Of Fury <:mecha_icon:1488150151519535144>", # Titre cliquable si vous ajoutez url="https://..."
+        title= "<:mecha_icon:1488150151519535144> Rules of the Mech Event in Stampede Of Fury <:mecha_icon:1488150151519535144>",
         description=(
         "**1 -** Dont kill mechs 200 <:lvlmecha:1488149380346286212> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
@@ -235,6 +235,22 @@ async def on_message_delete(message):
     embed.set_thumbnail(url=message.author.display_avatar.url)
     
     await salon_log.send(embed=embed)
+
+@bot.tree.command(name="choice", description="Selects a random option from the options provided")
+@discord.app_commands.describe(options="Separate your choices with commas (e.g. heads, tails)")
+async def slash_choice(interaction: discord.Interaction, options: str):
+    liste_choix = [c.strip() for c in options.split(',') if c.strip()]
+    
+    if len(liste_choix) < 2:
+        await interaction.response.send_message(
+            "❌ I need at least two options separated by a comma to make a choice!", 
+            ephemeral=True 
+        )
+        return
+
+    resultat = choice(liste_choix) 
+
+    await interaction.response.send_message(f"Between `{', '.join(liste_choix)}`...\n\n🎲 I chose : **{resultat}** !")
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
