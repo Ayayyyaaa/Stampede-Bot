@@ -70,7 +70,7 @@ async def on_message(message):
         
     contenu_minuscule = message.content.lower()
 
-    words = {'aya' : '✨', 'hus' : '✨', 'steel' : '👑', 'kazu' : '🤮', 'Kal' : '<:Raja:1488127825859838103>'}
+    words = {'aya' : '✨', 'hus' : '✨', 'steel' : '👑', 'kazu' : '🤮', 'kal' : '<:Raja:1488127825859838103>'}
     for mot, emoji in words.items():
         if mot in contenu_minuscule:
             try:
