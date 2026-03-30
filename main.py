@@ -96,9 +96,9 @@ async def rule_mech(interaction: discord.Interaction):
         description=(
         "**1 -** Dont kill mechs 200 <:lvl200mech:1488140189489692793> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
-        "**3 -** Always allow the spawner to get the first hit unless 5 minutes pass <:research:1488144464835776622>\n"
+        "**3 -** Always allow the spawner to get the first hit unless 5 minutes pass <a:research:1488144464835776622>\n"
         "**4 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
-        "**5 -** Enjoy ! <:netero_heart:1441402964483903540> <a:rajagif:1488138198939996272>"
+        "**5 -** Enjoy ! <:netero_heart:1441402964483903540>"
     ),
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
