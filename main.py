@@ -70,7 +70,7 @@ async def on_message(message):
         
     contenu_minuscule = message.content.lower()
 
-    words = {'aya' : '✨', 'hus' : '✨', 'steel' : '👑', 'kazu' : '🤮', 'kal' : '<:Raja:1488127825859838103>'}
+    words = {'aya' : '✨', 'hus' : '✨', 'steel' : '👑', 'kazu' : '🤮', 'kal' : '<:Raja:1488127825859838103>', 'kalindrov' : '<a:rajagif:1488138198939996272>', 'drip' : '👴'}
     for mot, emoji in words.items():
         if mot in contenu_minuscule:
             try:
@@ -94,10 +94,10 @@ async def rule_mech(interaction: discord.Interaction):
     embed = discord.Embed(
         title= "<:mech:1487413876139102358> Rules of the Mech Event in Stampede Of Fury <:mech:1487413876139102358>", # Titre cliquable si vous ajoutez url="https://..."
         description=(
-        "**1 -** Dont kill mechs 200 and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
-        "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones you can't use, convert them to gray phones\n"
+        "**1 -** Dont kill mechs 200 <:lvl200mech:1488140189489692793> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
+        "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
         "**3 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
-        "**4 -** Enjoy ! <:netero_heart:1441402964483903540> <a:rajagif:1488129905991352422>"
+        "**4 -** Enjoy ! <:netero_heart:1441402964483903540> <a:rajagif:1488138198939996272>"
     ),
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
