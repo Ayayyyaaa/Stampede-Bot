@@ -18,6 +18,14 @@ bot = commands.Bot(command_prefix="stampede", intents=intents)
 furymember = 1378019701484945599 #1135533413957378108 #1378019701484945599
 colead = 1376919653670195313 #1376919653670195313
 SALON_ANNONCE_ID = 1487046656783548416
+SALON_LOG_ID = 1488162984328036442
+ROUNDTABLE = 1380579205363929098
+
+admin = {'kazukuta' : 689011423208013842,
+         'kalindrov': 226383207510179841,
+         'steel' : 445665967381676032,
+         'ayagus' : 716927140796301312,
+         'husgus' : 694477321536798760}
 
 @bot.event
 async def on_ready():
@@ -67,6 +75,17 @@ async def on_raw_reaction_add(payload):
 async def on_message(message):
     if message.author.bot:
         return
+    
+    if message.channel.id == ROUNDTABLE:
+        if message.author.id in [admin['kazukuta'], admin['husgus']]:
+            heure_actuelle = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
+            if 0 <= heure_actuelle < 6:
+                try:
+                    await message.add_reaction("🌿") 
+                except discord.HTTPException:
+                    pass
+                if randint(1, 10) == 1:
+                    await message.reply("Go touch grass 🌱")
         
     contenu_minuscule = message.content.lower()
 
@@ -169,6 +188,29 @@ async def annonce_vendredi():
     await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
 
     bot.utiliser_annonce_smash = not bot.utiliser_annonce_smash
+
+@bot.event
+async def on_message_delete(message):
+    if message.author.bot:
+        return
+
+    salon_log = bot.get_channel(SALON_LOG_ID)
+    if not salon_log:
+        return
+
+    embed = discord.Embed(
+        title="🗑️ Deleted Message",
+        description=message.content,
+        color=discord.Color.red(),
+        timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
+    )
+    
+    embed.add_field(name="Auteur", value=f"{message.author.mention} ({message.author.name})", inline=True)
+    embed.add_field(name="Salon d'origine", value=message.channel.mention, inline=True)
+
+    embed.set_thumbnail(url=message.author.display_avatar.url)
+
+    await salon_log.send(embed=embed)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
