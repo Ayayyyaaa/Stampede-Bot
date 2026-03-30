@@ -90,13 +90,14 @@ async def on_message(message):
         
     contenu_minuscule = message.content.lower()
 
-    words = {'aya' : '✨', 'hus' : '✨', 'steel' : '👑', 'kazu' : '🤮', 'kal' : '<:Raja:1488127825859838103>', 'kalindrov' : '<a:rajagif:1488138198939996272>', 'drip' : '👴'}
-    for mot, emoji in words.items():
+    words = {'aya' : ['✨'], 'hus' : ['✨'], 'steel' : ['👑'], 'kazu' : ['🤮'], 'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 'drip' : ['👴']}
+    for mot, liste in words.items():
         if mot in contenu_minuscule:
-            try:
-                await message.add_reaction(emoji)
-            except discord.HTTPException:
-                pass 
+            for emoji in liste:
+                try:
+                    await message.add_reaction(emoji)
+                except discord.HTTPException:
+                    pass 
     contenu_minuscule = contenu_minuscule.replace('-','')
     contenu_minuscule = contenu_minuscule.replace('/','')
     contenu_minuscule = contenu_minuscule.replace('_','')
@@ -121,7 +122,7 @@ def creer_embed_mech():
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or **/setup_ticket** for customised optimisation by our moderators\n", inline=True) 
+    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
     embed.add_field(name="🎯 Objectives", value="100 pops per person, we can reach the 3000 !", inline=False)
 
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
@@ -148,7 +149,7 @@ def creer_embed_smash():
         color=discord.Color.gold(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or **/setup_ticket** for customised optimisation by our moderators\n", inline=True) 
+    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
     embed.add_field(name="🎯 Objectives", value="Follow the strategy, you can reach the 400 smash point ! <:smashpoint:1487425123718795367>", inline=False)
 
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
@@ -250,7 +251,10 @@ async def slash_choice(interaction: discord.Interaction, options: str):
 
     resultat = choice(liste_choix) 
 
-    await interaction.response.send_message(f"Between `{', '.join(liste_choix)}`...\n\n🎲 I chose : **{resultat}** !")
+    await interaction.response.send_message(f"Between **{', '.join(liste_choix)}**...\n\n🎲 I chose : **{resultat}** !")
+
+
+
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
