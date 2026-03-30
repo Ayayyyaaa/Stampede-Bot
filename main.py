@@ -51,9 +51,9 @@ async def on_raw_reaction_add(payload):
     react_author = guild.get_member(payload.user_id)
     if not react_author:
         return
-    #lead = any(role.id == colead for role in react_author.roles)
-    #if not lead:
-    #    return
+    lead = any(role.id == colead for role in react_author.roles)
+    if not lead:
+       return
     
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
@@ -124,7 +124,7 @@ async def on_message(message):
         'aya' : ['✨'], 
         'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 
         'steel' : ['👑'], 
-        'kazu' : ['🤮', '🅱️', '🅰️', '🇳'], # <-- Corrigé ici
+        'kazu' : ['🤮', '🇧', '🇦', '🇳'],
         'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 
         'drip' : ['👴']
     }
