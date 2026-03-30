@@ -70,7 +70,7 @@ async def on_message(message):
         
     contenu_minuscule = message.content.lower()
 
-    words = {'aya' : '✨', 'hus' : '✨', 'steel' : '👑', 'kazu' : '🤮'}
+    words = {'aya' : '✨', 'hus' : '✨', 'steel' : '👑', 'kazu' : '🤮', 'Kal' : '<:Raja:1488127825859838103>'}
     for mot, emoji in words.items():
         if mot in contenu_minuscule:
             try:
@@ -97,7 +97,7 @@ async def rule_mech(interaction: discord.Interaction):
         "**1 -** Dont kill mechs 200 and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones you can't use, convert them to gray phones\n"
         "**3 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
-        "**4 -** Enjoy ! <:Bosstickets:1487196821045645413>"
+        "**4 -** Enjoy ! <:netero_heart:1441402964483903540> <:rajagif:1488129905991352422>"
     ),
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
@@ -125,7 +125,7 @@ async def rule_smash(interaction: discord.Interaction):
         "**1 -** Buy tickets at least once a day <:Pvpticket:1487183172134371388>\n"
         "**2 -** Use yours PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166> \n"
         "**3 -** Attack the boss once a day\n"
-        "**3 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! 🎉\n"
+        "**3 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! <:smashpoint:1487425123718795367>\n"
         "**5 -** Enjoy ! <:netero_heart:1441402964483903540>"
     ),
         color=discord.Color.gold(),
