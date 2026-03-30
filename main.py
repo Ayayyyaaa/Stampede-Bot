@@ -54,12 +54,42 @@ async def on_raw_reaction_add(payload):
     lead = any(role.id == colead for role in react_author.roles)
     if not lead:
         return
+    
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
-    
     auteur = message.author
     role = guild.get_role(furymember)
-    await message.channel.send(f"Welcome {auteur.display_name} ! You've been accepted by {react_author.display_name}. You're now a Stampede Of Fury member !\nYou can read the rules in <#1468349920237977690> and ask any question in <#1341156549858558145> !\n\nYou can choose your roles with **/faction [faction-name]** :\n - Cobra  <:Cobra:1487161398017392791> \n -  Griffin <:Griffin:1487161459707478237> \n - Crane  <:Crane:1487161429458026639> \n - Mantis  <:Mantis:1487161330455674892>\n - Kodiak  <:Kodiak:1487161368086974646>\n - Howler  <:Howler:1487161297765138644> ")
+    
+    embed = discord.Embed(
+        title="<:Raja:1488127825859838103> Welcome in Stampede Of Fury ! <:Raja:1488127825859838103>",
+        description=f"Congratulations **{auteur.display_name}**, you've been accepted by **{react_author.display_name}** !\nYou're now a SoF member !",
+        color=discord.Color.orange()
+    )
+
+    if auteur.avatar:
+        embed.set_thumbnail(url=auteur.avatar.url)
+
+    embed.add_field(
+        name="<a:research:1488144464835776622> Useful channels",
+        value="• Read the rules in <#1468349920237977690>\n• Ask your questions in <#1341156549858558145>",
+        inline=False
+    )
+    embed.add_field(
+        name="<:faction:1488292952618045440> Chose your faction",
+        value=(
+            "Use **/faction [faction-name]** to chose :\n\n"
+            " <:Cobra:1487161398017392791> **Cobra** \n"
+            " <:Griffin:1487161459707478237> **Griffin** \n"
+            " <:Crane:1487161429458026639> **Crane** \n"
+            " <:Mantis:1487161330455674892> **Mantis** \n"
+            " <:Kodiak:1487161368086974646> **Kodiak** \n"
+            " <:Howler:1487161297765138644> **Howler** "
+        ),
+        inline=False
+    )
+
+    await message.channel.send(content=f"Bienvenue {auteur.mention} !", embed=embed)
+    
     if not role:
         print("Erreur, le rôle n'existe pas")
         return
@@ -90,7 +120,7 @@ async def on_message(message):
         
     contenu_minuscule = message.content.lower()
 
-    words = {'aya' : ['✨'], 'hus' : ['✨'], 'steel' : ['👑'], 'kazu' : ['🤮'], 'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 'drip' : ['👴']}
+    words = {'aya' : ['✨'], 'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 'steel' : ['👑'], 'kazu' : ['🤮', '🅱️', '🅰️', '<:regional_indicator_n:>'], 'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 'drip' : ['👴']}
     for mot, liste in words.items():
         if mot in contenu_minuscule:
             for emoji in liste:
@@ -122,7 +152,7 @@ def creer_embed_mech():
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
+    embed.add_field(name="<:optis:1488294635519479918> Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
     embed.add_field(name="🎯 Objectives", value="100 pops per person, we can reach the 3000 !", inline=False)
 
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
@@ -149,7 +179,7 @@ def creer_embed_smash():
         color=discord.Color.gold(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="📍 Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
+    embed.add_field(name="<:optis:1488294635519479918> Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
     embed.add_field(name="🎯 Objectives", value="Follow the strategy, you can reach the 400 smash point ! <:smashpoint:1487425123718795367>", inline=False)
 
     embed.set_thumbnail(url=f"attachment://{nom_image2}") 
