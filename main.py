@@ -201,11 +201,11 @@ async def on_message_delete(message):
 
     # Par défaut, on suppose que l'utilisateur a supprimé son propre message
     # (Discord ne génère PAS de log d'audit si on supprime son propre message)
-    suppresseur = message.author
+    suppresseur = 'message.author'
 
     if message.guild:
         # Pause d'une seconde et demie car l'API de Discord a souvent un léger délai
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(3)
         
         try:
             # On cherche dans les 5 derniers logs au cas où plusieurs actions ont lieu en même temps
