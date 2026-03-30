@@ -120,7 +120,14 @@ async def on_message(message):
         
     contenu_minuscule = message.content.lower()
 
-    words = {'aya' : ['✨'], 'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 'steel' : ['👑'], 'kazu' : ['🤮', '🅱️', '🅰️', ':regional_indicator_n:'], 'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 'drip' : ['👴']}
+    words = {
+        'aya' : ['✨'], 
+        'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 
+        'steel' : ['👑'], 
+        'kazu' : ['🤮', '🅱️', '🅰️', '🇳'], # <-- Corrigé ici
+        'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 
+        'drip' : ['👴']
+    }
     for mot, liste in words.items():
         if mot in contenu_minuscule:
             for emoji in liste:
