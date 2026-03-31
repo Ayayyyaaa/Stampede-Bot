@@ -296,7 +296,6 @@ async def slash_choice(interaction: discord.Interaction, options: str):
 @bot.tree.command(name="character", description="Show some tips about the character")
 @discord.app_commands.describe(character_name="Nom du personnage (ex: Raja, Cobra, etc.)")
 async def character(interaction: discord.Interaction, character_name: str):
-    # Variables de chemins
     dossier = character_name.capitalize()
     nom_fichier_image = f"{character_name.lower()}_icon.png"
     chemin_image = f"resources/TapTap/{dossier}/{nom_fichier_image}"
@@ -304,7 +303,6 @@ async def character(interaction: discord.Interaction, character_name: str):
     nom_fichier_py = f"{character_name.lower()}.py"
     chemin_script = f"resources/TapTap/{dossier}/{nom_fichier_py}"
 
-    # Vérification de l'existence du script
     if not os.path.exists(chemin_script):
         await interaction.response.send_message(
             f"❌ Les données pour le personnage **{dossier}** n'existent pas encore ou sont mal orthographiées.", 
@@ -313,16 +311,28 @@ async def character(interaction: discord.Interaction, character_name: str):
         return
 
     try:
-        # Importation dynamique du fichier Python
+        # 1. Importation dynamique du fichier Python
         spec = importlib.util.spec_from_file_location(f"module_{dossier}", chemin_script)
         char_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(char_module)
+
+        perso = char_module.get_character_data()
+
+        fichier_discord = discord.File(chemin_image, filename=nom_fichier_image)
+
+        embed = discord.Embed(
+            title=f"🛡️ {perso.get_nom()} - {perso.get_faction()}",
+            description=f"**Note Globale : {perso.get_note()}**",
+            color=discord.Color.gold()
+        )
         
-        # Exécution de la fonction get_data() contenue dans le fichier du perso
-        # On passe le chemin complet et juste le nom de l'image
-        embed, fichier_discord = char_module.get_data(chemin_image, nom_fichier_image)
+        embed.add_field(name="💡 Astuce 1", value=perso.get_astuce1(), inline=False)
+        embed.add_field(name="💡 Astuce 2", value=perso.get_astuce2(), inline=False)
+        embed.add_field(name="🗡️ Points forts", value=perso.get_points_forts(), inline=True)
+        embed.add_field(name="🛡️ Faiblesses", value=perso.get_faiblesses(), inline=True)
         
-        # Envoi du résultat final
+        embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
+
         await interaction.response.send_message(embed=embed, file=fichier_discord)
         
     except Exception as e:
