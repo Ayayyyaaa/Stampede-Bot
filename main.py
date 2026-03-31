@@ -304,8 +304,13 @@ async def slash_choice(interaction: discord.Interaction, options: str):
 @discord.app_commands.describe(character_name="Nom du personnage (ex: Raja, Cobra, etc.)")
 async def character(interaction: discord.Interaction, character_name: str):
     dossier = character_name.capitalize()
+    
+    # --- CHEMINS ---
     nom_fichier_image = f"{character_name.lower()}_icon.png"
     chemin_image = f"resources/TapTap/{dossier}/{nom_fichier_image}"
+    
+    nom_fichier_gif = f"{character_name.lower()}.gif"
+    chemin_gif = f"resources/TapTap/{dossier}/{nom_fichier_gif}"
     
     nom_fichier_py = f"{character_name.lower()}.py"
     chemin_script = f"resources/TapTap/{dossier}/{nom_fichier_py}"
@@ -324,7 +329,14 @@ async def character(interaction: discord.Interaction, character_name: str):
 
         perso = char_module.get_character_data()
 
+        # --- GESTION DES FICHIERS ---
+        fichiers_a_envoyer = []
+        
+        # On ajoute l'icône à la liste
         fichier_discord = discord.File(chemin_image, filename=nom_fichier_image)
+        fichiers_a_envoyer.append(fichier_discord)
+
+        # --- CRÉATION DE L'EMBED ---
         emoji, colour = factions[perso.get_faction()]
         embed = discord.Embed(
             title=f"{emoji} {perso.get_nom()} {emoji}",
@@ -339,7 +351,15 @@ async def character(interaction: discord.Interaction, character_name: str):
         
         embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
 
-        await interaction.response.send_message(embed=embed, file=fichier_discord)
+        # --- AJOUT DU GIF (Optionnel) ---
+        if os.path.exists(chemin_gif):
+            fichier_gif = discord.File(chemin_gif, filename=nom_fichier_gif)
+            fichiers_a_envoyer.append(fichier_gif) # On ajoute le gif à la liste
+            embed.set_image(url=f"attachment://{nom_fichier_gif}") # On l'affiche en bas de l'embed
+
+        # --- ENVOI ---
+        # Attention : On utilise bien 'files=fichiers_a_envoyer' avec un 's' !
+        await interaction.response.send_message(embed=embed, files=fichiers_a_envoyer)
         
     except Exception as e:
         await interaction.response.send_message(
