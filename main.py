@@ -22,12 +22,19 @@ colead = 1376919653670195313 #1376919653670195313
 SALON_ANNONCE_ID = 1487046656783548416
 SALON_LOG_ID = 1488162984328036442
 ROUNDTABLE = 1380579205363929098
+factions = {"Cobra" : ("<:Cobra:1487161398017392791>",discord.Color.dark_purple()),
+            "Griffin" : ("<:Griffin:1487161459707478237>",discord.Color.light_grey()),
+            "Crane" : ("<:Crane:1487161429458026639>",discord.Color.dark_blue()),
+            "Mantis" : ("<:Mantis:1487161330455674892>",discord.Color.green()),
+            "Kodiak" : ("<:Kodiak:1487161368086974646>",discord.Color.red()),
+            "Howler" : ("<:Howler:1487161297765138644>",discord.Color.orange())}
 
 admin = {'kazukuta' : 689011423208013842,
          'kalindrov': 226383207510179841,
          'steel' : 445665967381676032,
          'ayagus' : 716927140796301312,
          'husgus' : 694477321536798760}
+
 
 @bot.event
 async def on_ready():
@@ -311,7 +318,6 @@ async def character(interaction: discord.Interaction, character_name: str):
         return
 
     try:
-        # 1. Importation dynamique du fichier Python
         spec = importlib.util.spec_from_file_location(f"module_{dossier}", chemin_script)
         char_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(char_module)
@@ -319,11 +325,11 @@ async def character(interaction: discord.Interaction, character_name: str):
         perso = char_module.get_character_data()
 
         fichier_discord = discord.File(chemin_image, filename=nom_fichier_image)
-
+        emoji, colour = factions[perso.get_faction()]
         embed = discord.Embed(
-            title=f"🛡️ {perso.get_nom()} - {perso.get_faction()}",
-            description=f"**Note Globale : {perso.get_note()}**",
-            color=discord.Color.gold()
+            title=f"{emoji} {perso.get_nom()} {emoji}",
+            description=f"**Rating : {perso.get_note()}\nFaction : {perso.get_faction()}**",
+            color=colour
         )
         
         embed.add_field(name="💡 Astuce 1", value=perso.get_astuce1(), inline=False)
