@@ -300,12 +300,15 @@ async def slash_choice(interaction: discord.Interaction, options: str):
 
 
 
+
+
+
+
 @bot.tree.command(name="character", description="Show some tips about the character")
 @discord.app_commands.describe(character_name="Nom du personnage (ex: Raja, Cobra, etc.)")
 async def character(interaction: discord.Interaction, character_name: str):
     dossier = character_name.capitalize()
-    
-    # --- CHEMINS ---
+
     nom_fichier_image = f"{character_name.lower()}_icon.png"
     chemin_image = f"resources/TapTap/{dossier}/{nom_fichier_image}"
     
@@ -317,7 +320,7 @@ async def character(interaction: discord.Interaction, character_name: str):
 
     if not os.path.exists(chemin_script):
         await interaction.response.send_message(
-            f"❌ Les données pour le personnage **{dossier}** n'existent pas encore ou sont mal orthographiées.", 
+            f"❌ The character **{dossier}** is misspelled, not added or too weak.", 
             ephemeral=True
         )
         return
@@ -329,14 +332,11 @@ async def character(interaction: discord.Interaction, character_name: str):
 
         perso = char_module.get_character_data()
 
-        # --- GESTION DES FICHIERS ---
         fichiers_a_envoyer = []
-        
-        # On ajoute l'icône à la liste
+
         fichier_discord = discord.File(chemin_image, filename=nom_fichier_image)
         fichiers_a_envoyer.append(fichier_discord)
 
-        # --- CRÉATION DE L'EMBED ---
         emoji, colour = factions[perso.get_faction()]
         gros_titre = f"# {emoji} {perso.get_nom()} {emoji}\n"
         embed = discord.Embed(
@@ -344,10 +344,10 @@ async def character(interaction: discord.Interaction, character_name: str):
             color=colour
         )
         
-        embed.add_field(name="💡 Astuce 1", value=perso.get_astuce1(), inline=False)
-        embed.add_field(name="💡 Astuce 2", value=perso.get_astuce2(), inline=False)
-        embed.add_field(name="🗡️ Points forts", value=perso.get_points_forts(), inline=True)
-        embed.add_field(name="🛡️ Faiblesses", value=perso.get_faiblesses(), inline=True)
+        embed.add_field(name="<:arena:1488581637917769738> Arena", value=perso.get_arena(), inline=False)
+        embed.add_field(name="<:campaign:1488582421266829364> Campaign / Sewers", value=perso.get_campaign(), inline=False)
+        embed.add_field(name="<:faction_sewer:1488582418985255003> Faction Sewers", value=perso.get_faction_sewers(), inline=True)
+        embed.add_field(name="<:usefull:1488293835137093683> Tips", value=perso.get_tips(), inline=True)
         
         embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
 
@@ -360,7 +360,7 @@ async def character(interaction: discord.Interaction, character_name: str):
         
     except Exception as e:
         await interaction.response.send_message(
-            f"❌ Erreur lors du chargement des données de {dossier} : `{e}`", 
+            f"❌ Server error {dossier} : `{e}`", 
             ephemeral=True
         )
 

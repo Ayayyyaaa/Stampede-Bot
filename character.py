@@ -1,12 +1,12 @@
 class Personnage:
-    def __init__(self, nom, faction, note, astuce1, astuce2, points_forts, faiblesses):
+    def __init__(self, nom, faction, note, arena, campaign, faction_sewers, tips):
         self.nom = nom
         self.faction = faction
         self.note = note
-        self.astuce1 = astuce1
-        self.astuce2 = astuce2
-        self.points_forts = points_forts
-        self.faiblesses = faiblesses
+        self.arena = arena
+        self.campaign = campaign
+        self.faction_sewers = faction_sewers
+        self.tips = tips
 
     # Les Getters
     def get_nom(self):
@@ -18,14 +18,14 @@ class Personnage:
     def get_note(self):
         return self.note
 
-    def get_astuce1(self):
-        return self.astuce1
+    def get_arena(self):
+        return self.arena
 
-    def get_astuce2(self):
-        return self.astuce2
+    def get_campaign(self):
+        return self.campaign
 
-    def get_points_forts(self):
-        return self.points_forts
+    def get_faction_sewers(self):
+        return self.faction_sewers
 
-    def get_faiblesses(self):
-        return self.faiblesses
+    def get_tips(self):
+        return self.tips
