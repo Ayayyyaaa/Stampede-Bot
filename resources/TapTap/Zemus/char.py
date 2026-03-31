@@ -5,7 +5,6 @@ def get_character_data():
         nom="Zemus",
         faction="Cobra",
         note="_Coming soon..._",
-        note="_Coming soon..._",
         arena="_Coming soon..._",
         campaign="_Coming soon..._",
         faction_sewers="_Coming soon..._",
