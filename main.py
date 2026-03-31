@@ -338,10 +338,8 @@ async def character(interaction: discord.Interaction, character_name: str):
 
         # --- CRÉATION DE L'EMBED ---
         emoji, colour = factions[perso.get_faction()]
-        espaces_centrage = "⠀⠀⠀"
-        gros_titre = f"# {espaces_centrage}{emoji} {perso.get_nom()} {emoji}\n"
+        gros_titre = f"# {emoji} {perso.get_nom()} {emoji}\n"
         embed = discord.Embed(
-            title=f"{emoji} {perso.get_nom()} {emoji}",
             description=f"{gros_titre}**Rating : {perso.get_note()}\nFaction : {perso.get_faction()}**",
             color=colour
         )
