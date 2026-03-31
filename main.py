@@ -9,6 +9,7 @@ import datetime
 from zoneinfo import ZoneInfo
 import re
 import asyncio
+import importlib.util
 
 load_dotenv()
 intents = discord.Intents.default()
@@ -295,29 +296,40 @@ async def slash_choice(interaction: discord.Interaction, options: str):
 @bot.tree.command(name="character", description="Show some tips about the character")
 @discord.app_commands.describe(character_name="Nom du personnage (ex: Raja, Cobra, etc.)")
 async def character(interaction: discord.Interaction, character_name: str):
+    # Variables de chemins
     dossier = character_name.capitalize()
+    nom_fichier_image = f"{character_name.lower()}_icon.png"
+    chemin_image = f"resources/TapTap/{dossier}/{nom_fichier_image}"
+    
+    nom_fichier_py = f"{character_name.lower()}.py"
+    chemin_script = f"resources/TapTap/{dossier}/{nom_fichier_py}"
 
-    fichier = f"{character_name.lower()}_icon.png"
-    chemin_image = f"resources/TapTap/{dossier}/{fichier}"
-
-    if not os.path.exists(chemin_image):
+    # Vérification de l'existence du script
+    if not os.path.exists(chemin_script):
         await interaction.response.send_message(
-            f"❌ Impossible de trouver le personnage **{character_name}**. Vérifie l'orthographe !", 
-            ephemeral=True 
+            f"❌ Les données pour le personnage **{dossier}** n'existent pas encore ou sont mal orthographiées.", 
+            ephemeral=True
         )
         return
 
-    discord_file = discord.File(chemin_image, filename=fichier)
-    
-    embed = discord.Embed(
-        title=f"🛡️ Informations sur {dossier}",
-        description=f"Voici les détails et astuces pour **{dossier}**.",
-        color=discord.Color.blue()
-    )
-    #embed.set_thumbnail(url=...)
-    embed.set_image(url=f"attachment://{fichier}")
-
-    await interaction.response.send_message(embed=embed, file=discord_file)
+    try:
+        # Importation dynamique du fichier Python
+        spec = importlib.util.spec_from_file_location(f"module_{dossier}", chemin_script)
+        char_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(char_module)
+        
+        # Exécution de la fonction get_data() contenue dans le fichier du perso
+        # On passe le chemin complet et juste le nom de l'image
+        embed, fichier_discord = char_module.get_data(chemin_image, nom_fichier_image)
+        
+        # Envoi du résultat final
+        await interaction.response.send_message(embed=embed, file=fichier_discord)
+        
+    except Exception as e:
+        await interaction.response.send_message(
+            f"❌ Erreur lors du chargement des données de {dossier} : `{e}`", 
+            ephemeral=True
+        )
 
 
 TOKEN = os.getenv("DISCORD_TOKEN")
