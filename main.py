@@ -110,6 +110,18 @@ async def on_raw_reaction_add(payload):
         print(f"Erreur discord : {e}")
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -150,6 +162,18 @@ async def on_message(message):
         await message.channel.send('https://klipy.com/gifs/cat-67')
     await bot.process_commands(message)
 
+
+
+
+
+
+
+
+
+
+
+
+
 def creer_embed_mech():
     nom_image = "resources/eventmechas.png"
     nom_image2 = "resources/tapforce.png"
@@ -158,7 +182,7 @@ def creer_embed_mech():
     embed = discord.Embed(
         title= "<:mecha_icon:1488150151519535144> Rules of the Mech Event in Stampede Of Fury <:mecha_icon:1488150151519535144>",
         description=(
-        "**1 -** Dont kill mechs 200 <:lvlmecha:1488149380346286212> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
+        "**1 -** Dont kill mechs 180 <:mech180:1488607738404671648> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
         "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
         "**3 -** Always allow the spawner to get the first hit unless 5 minutes pass <a:research:1488144464835776622>\n"
         "**4 -** If there is anything you need regarding the event send a private message to : **AyaGus** , **SteelOfDmcls** , **HusGus** , **Kalindrov** or **Kazukaka**\n"
@@ -204,6 +228,11 @@ def creer_embed_smash():
 
     return embed, [FICHIER2, FICHIER]
 
+
+
+
+
+
 @bot.tree.command(name="rule_mechs", description="Show the rules for mechs events")
 async def rule_mech(interaction: discord.Interaction):
     embed, fichiers = creer_embed_mech()
@@ -215,6 +244,14 @@ async def rule_mech(interaction: discord.Interaction):
     embed, fichiers = creer_embed_smash()
     embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
     await interaction.response.send_message(embed=embed, files=fichiers)
+
+
+
+
+
+
+
+
 
 
 heure_envoi = datetime.time(hour=0, minute=0, tzinfo=ZoneInfo("Europe/Paris"))
@@ -316,7 +353,7 @@ async def character(interaction: discord.Interaction, character_name: str):
     chemin_gif = f"resources/TapTap/{dossier}/{nom_fichier_gif}"
     
     nom_fichier_py = f"{character_name.lower()}.py"
-    chemin_script = f"resources/TapTap/{dossier}/{nom_fichier_py}"
+    chemin_script = f"resources/TapTap/{dossier}/char.py"
 
     if not os.path.exists(chemin_script):
         await interaction.response.send_message(

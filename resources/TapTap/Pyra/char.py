@@ -2,8 +2,9 @@ from character import Personnage
 
 def get_character_data():
     chancer = Personnage(
-        nom="Face",
-        faction="Crane",
+        nom="Pyra",
+        faction="Howler",
+        note="_Coming soon..._",
         note="_Coming soon..._",
         arena="_Coming soon..._",
         campaign="_Coming soon..._",
