@@ -352,7 +352,7 @@ async def character(interaction: discord.Interaction, character_name: str):
     nom_fichier_gif = f"{character_name.lower()}.gif"
     chemin_gif = f"resources/TapTap/{dossier}/{nom_fichier_gif}"
     
-    # Ton nouveau système standardisé
+    nom_fichier_py = f"{character_name.lower()}.py"
     chemin_script = f"resources/TapTap/{dossier}/char.py"
 
     if not os.path.exists(chemin_script):
@@ -381,22 +381,17 @@ async def character(interaction: discord.Interaction, character_name: str):
             color=colour
         )
         
-        # 1. On place l'icône de base en tout petit en haut à gauche
-        embed.set_author(name=f"{perso.get_nom()} Info", icon_url=f"attachment://{nom_fichier_image}")
-        
         embed.add_field(name="<:arena:1488581637917769738> Arena", value=perso.get_arena(), inline=False)
         embed.add_field(name="<:campaign:1488582421266829364> Campaign / Sewers", value=perso.get_campaign(), inline=False)
         embed.add_field(name="<:faction_sewer:1488582418985255003> Faction Sewers", value=perso.get_faction_sewers(), inline=True)
         embed.add_field(name="<:usefull:1488293835137093683> Tips", value=perso.get_tips(), inline=True)
         
-        # 2. On gère le GIF en miniature (en haut à droite) au lieu de l'image géante
+        embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
+
         if os.path.exists(chemin_gif):
             fichier_gif = discord.File(chemin_gif, filename=nom_fichier_gif)
             fichiers_a_envoyer.append(fichier_gif) 
-            embed.set_thumbnail(url=f"attachment://{nom_fichier_gif}") 
-        else:
-            # Sécurité : Si le perso n'a pas de GIF, on met son icône en miniature pour remplir l'espace
-            embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
+            embed.set_image(url=f"attachment://{nom_fichier_gif}") 
 
         await interaction.response.send_message(embed=embed, files=fichiers_a_envoyer)
         
@@ -405,6 +400,7 @@ async def character(interaction: discord.Interaction, character_name: str):
             f"❌ Server error {dossier} : `{e}`", 
             ephemeral=True
         )
+
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
