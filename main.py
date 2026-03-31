@@ -292,6 +292,33 @@ async def slash_choice(interaction: discord.Interaction, options: str):
 
 
 
+@bot.tree.command(name="character", description="Show some tips about the character")
+@discord.app_commands.describe(character_name="Nom du personnage (ex: Raja, Cobra, etc.)")
+async def character(interaction: discord.Interaction, character_name: str):
+    dossier = character_name.capitalize()
+
+    fichier = f"{character_name.lower()}_icon.png"
+    chemin_image = f"resources/TapTap/{dossier}/{fichier}"
+
+    if not os.path.exists(chemin_image):
+        await interaction.response.send_message(
+            f"❌ Impossible de trouver le personnage **{character_name}**. Vérifie l'orthographe !", 
+            ephemeral=True 
+        )
+        return
+
+    discord_file = discord.File(chemin_image, filename=fichier)
+    
+    embed = discord.Embed(
+        title=f"🛡️ Informations sur {dossier}",
+        description=f"Voici les détails et astuces pour **{dossier}**.",
+        color=discord.Color.blue()
+    )
+    #embed.set_thumbnail(url=...)
+    embed.set_image(url=f"attachment://{fichier}")
+
+    await interaction.response.send_message(embed=embed, file=discord_file)
+
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 bot.run(TOKEN)
