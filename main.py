@@ -28,6 +28,9 @@ admin = {'kazukuta' : 689011423208013842,
          'ayagus' : 716927140796301312,
          'husgus' : 694477321536798760}
 
+app_emojis_cache = {}
+spoofed_messages = set()
+
 @bot.event
 async def on_ready():
     print(f"✅ Connecté en tant que {bot.user}")
@@ -112,30 +115,23 @@ async def on_message(message):
         new_content = message.content
         replaced = False
         
-        # On supprime les doublons pour ne pas chercher 2 fois le même emoji
         for emoji_name in set(custom_emojis):
-            # Cherche l'emoji dans tout le cache du bot (tous ses serveurs)
-            emoji = discord.utils.get(bot.emojis, name=emoji_name)
+            # On cherche l'émoji dans le cache de l'application
+            emoji = app_emojis_cache.get(emoji_name)
             
             if emoji:
-                # Remplace le texte :nom: par le vrai format <:nom:id>
                 new_content = new_content.replace(f":{emoji_name}:", str(emoji))
                 replaced = True
                 
-        # Si au moins un emoji a été remplacé, on déclenche le Webhook
         if replaced:
             try:
-                # Récupère les webhooks du salon
                 webhooks = await message.channel.webhooks()
-                # Cherche notre webhook spécifique, sinon le crée
-                webhook = discord.utils.get(webhooks, name="Stampede Emoji Bot")
+                webhook = discord.utils.get(webhooks, name="StampedeBot Webhook")
                 if not webhook:
-                    webhook = await message.channel.create_webhook(name="Stampede Emoji Bot")
+                    webhook = await message.channel.create_webhook(name="StampedeBot Webhook")
                 
-                # Gestion des pièces jointes (pour ne pas perdre les images envoyées avec l'emoji)
                 files = [await attachment.to_file() for attachment in message.attachments]
                 
-                # Envoi du message avec le Webhook en usurpant l'identité du membre
                 await webhook.send(
                     content=new_content,
                     username=message.author.display_name,
@@ -143,16 +139,17 @@ async def on_message(message):
                     files=files
                 )
                 
-                # Supprime le message original
+                # On note l'ID du message pour l'ignorer dans les logs
+                spoofed_messages.add(message.id)
                 await message.delete()
                 
-                # On s'arrête là pour ce message afin de ne pas déclencher les autres commandes en double
+                # On arrête ici pour ne pas exécuter le reste du code en double
                 return
             
             except discord.Forbidden:
-                print(f"❌ Erreur : Le bot n'a pas la permission de gérer les webhooks dans le salon {message.channel.name}")
+                print(f"❌ Le bot n'a pas la permission de gérer les webhooks dans {message.channel.name}")
             except discord.HTTPException as e:
-                print(f"❌ Erreur lors de l'envoi du webhook : {e}")
+                print(f"❌ Erreur webhook : {e}")
     if message.channel.id == ROUNDTABLE:
         if message.author.id in [admin['kazukuta'], admin['husgus']]:
             heure_actuelle = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
