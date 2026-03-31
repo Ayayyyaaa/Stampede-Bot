@@ -5,9 +5,9 @@ def get_character_data():
         nom="Fenrus",
         faction="Mantis",
         note="_Coming soon..._",
-        astuce1="_Coming soon..._",
-        astuce2="_Coming soon..._",
-        points_forts="_Coming soon..._",
-        faiblesses="_Coming soon..._"
+        arena="_Coming soon..._",
+        campaign="_Coming soon..._",
+        faction_sewers="_Coming soon..._",
+        tips="_Coming soon..._"
     )
     return chancer
