@@ -338,9 +338,11 @@ async def character(interaction: discord.Interaction, character_name: str):
 
         # --- CRÉATION DE L'EMBED ---
         emoji, colour = factions[perso.get_faction()]
+        espaces_centrage = "⠀⠀⠀"
+        gros_titre = f"# {espaces_centrage}{emoji} {perso.get_nom()} {emoji}\n"
         embed = discord.Embed(
             title=f"{emoji} {perso.get_nom()} {emoji}",
-            description=f"**Rating : {perso.get_note()}\nFaction : {perso.get_faction()}**",
+            description=f"{gros_titre}**Rating : {perso.get_note()}\nFaction : {perso.get_faction()}**",
             color=colour
         )
         
@@ -351,14 +353,11 @@ async def character(interaction: discord.Interaction, character_name: str):
         
         embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
 
-        # --- AJOUT DU GIF (Optionnel) ---
         if os.path.exists(chemin_gif):
             fichier_gif = discord.File(chemin_gif, filename=nom_fichier_gif)
-            fichiers_a_envoyer.append(fichier_gif) # On ajoute le gif à la liste
-            embed.set_image(url=f"attachment://{nom_fichier_gif}") # On l'affiche en bas de l'embed
+            fichiers_a_envoyer.append(fichier_gif) 
+            embed.set_image(url=f"attachment://{nom_fichier_gif}") 
 
-        # --- ENVOI ---
-        # Attention : On utilise bien 'files=fichiers_a_envoyer' avec un 's' !
         await interaction.response.send_message(embed=embed, files=fichiers_a_envoyer)
         
     except Exception as e:
