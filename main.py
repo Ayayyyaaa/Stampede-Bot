@@ -28,9 +28,6 @@ admin = {'kazukuta' : 689011423208013842,
          'ayagus' : 716927140796301312,
          'husgus' : 694477321536798760}
 
-app_emojis_cache = {}
-spoofed_messages = set()
-
 @bot.event
 async def on_ready():
     print(f"✅ Connecté en tant que {bot.user}")
@@ -109,47 +106,7 @@ async def on_raw_reaction_add(payload):
 async def on_message(message):
     if message.author.bot:
         return
-    custom_emojis = re.findall(r'(?<!<):([a-zA-Z0-9_]+):', message.content)
     
-    if custom_emojis:
-        new_content = message.content
-        replaced = False
-        
-        for emoji_name in set(custom_emojis):
-            # On cherche l'émoji dans le cache de l'application
-            emoji = app_emojis_cache.get(emoji_name)
-            
-            if emoji:
-                new_content = new_content.replace(f":{emoji_name}:", str(emoji))
-                replaced = True
-                
-        if replaced:
-            try:
-                webhooks = await message.channel.webhooks()
-                webhook = discord.utils.get(webhooks, name="StampedeBot Webhook")
-                if not webhook:
-                    webhook = await message.channel.create_webhook(name="StampedeBot Webhook")
-                
-                files = [await attachment.to_file() for attachment in message.attachments]
-                
-                await webhook.send(
-                    content=new_content,
-                    username=message.author.display_name,
-                    avatar_url=message.author.display_avatar.url,
-                    files=files
-                )
-                
-                # On note l'ID du message pour l'ignorer dans les logs
-                spoofed_messages.add(message.id)
-                await message.delete()
-                
-                # On arrête ici pour ne pas exécuter le reste du code en double
-                return
-            
-            except discord.Forbidden:
-                print(f"❌ Le bot n'a pas la permission de gérer les webhooks dans {message.channel.name}")
-            except discord.HTTPException as e:
-                print(f"❌ Erreur webhook : {e}")
     if message.channel.id == ROUNDTABLE:
         if message.author.id in [admin['kazukuta'], admin['husgus']]:
             heure_actuelle = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
