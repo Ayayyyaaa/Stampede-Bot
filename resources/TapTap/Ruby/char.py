@@ -9,6 +9,6 @@ def get_character_data():
         campaign="A-",
         faction_sewers="S-",
         mechs="A+",
-        tips="_Coming soon..._"
+        tips="• Good for basics mech teams\n• Nice main dps for Smash event"
     )
     return chancer

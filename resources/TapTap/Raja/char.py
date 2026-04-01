@@ -4,11 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Raja",
         faction="Cobra",
-        note="_Coming soon..._",
+        note="S-",
         arena="S-",
         campaign="S-",
         faction_sewers="S",
         mechs = "B",
-        tips="_Coming soon..._"
+        tips="• Good tank\n• Nice shield\n• Can silence ennemies"
     )
     return chancer

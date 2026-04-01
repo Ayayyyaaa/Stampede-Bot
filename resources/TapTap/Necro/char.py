@@ -4,11 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Necro",
         faction="Cobra",
-        note="_Coming soon..._",
+        note="A-",
         arena="C",
         campaign="B",
         faction_sewers="A+",
         mechs = "A+",
-        tips="_Coming soon..._"
+        tips="• Good for Mechs, boss will take more damages\n• Nice for Cobra Sewer beacause of his resurection"
     )
     return chancer

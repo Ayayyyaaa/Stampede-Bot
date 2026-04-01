@@ -4,10 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Komodo",
         faction="Mantis",
-        note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        note="A-",
+        arena="B",
+        campaign="B",
+        faction_sewers="A",
+        mechs="A+",
+        tips="• Usefull for mechs because apply a debuff"
     )
     return chancer

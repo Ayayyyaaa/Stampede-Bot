@@ -4,11 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Pyra",
         faction="Howler",
-        note="_Coming soon..._",
+        note="A+",
         arena="A+",
         campaign="A+",
         faction_sewers="A+",
         mechs = "B",
-        tips="_Coming soon..._"
+        tips="• Good for basics mech teams\n• Nice main dps for Smash event"
     )
     return chancer

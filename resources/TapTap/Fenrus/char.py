@@ -4,10 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Fenrus",
         faction="Mantis",
-        note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        note="A-",
+        arena="B",
+        campaign="A",
+        faction_sewers="A+",
+        mechs="B",
+        tips="• Overated -> not that good\n• Very weak hp"
     )
     return chancer

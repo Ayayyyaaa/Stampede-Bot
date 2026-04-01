@@ -4,10 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Jasper",
         faction="Griffin",
-        note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        note="A+",
+        arena="A",
+        campaign="A+",
+        faction_sewers="S-",
+        mechs="B",
+        tips="• Very strong shield"
     )
     return chancer

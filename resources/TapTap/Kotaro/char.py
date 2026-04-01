@@ -4,10 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Kotaro",
         faction="Kodiak",
-        note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        note="A-",
+        arena="B",
+        campaign="B",
+        faction_sewers="A+",
+        mechs="B",
+        tips="Usefull in sewers because of his tripple shield"
     )
     return chancer

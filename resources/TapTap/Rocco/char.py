@@ -4,11 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Rocco",
         faction="Howler",
-        note="_Coming soon..._",
+        note="A+",
         arena="A-",
         campaign="A+",
         faction_sewers="S",
         mechs = "B-",
-        tips="_Coming soon..._"
+        tips="• Essential for Howler team\n• Good dps\n• Can be use to nerf mechs"
     )
     return chancer
