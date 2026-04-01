@@ -5,9 +5,10 @@ def get_character_data():
         nom="Magus",
         faction="Mantis",
         note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
+        arena="C",
+        campaign="C",
+        faction_sewers="B",
+        mechs = "C-",
         tips="_Coming soon..._"
     )
     return chancer

@@ -5,9 +5,10 @@ def get_character_data():
         nom="Necro",
         faction="Cobra",
         note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
+        arena="C",
+        campaign="B",
+        faction_sewers="A+",
+        mechs = "A+",
         tips="_Coming soon..._"
     )
     return chancer

@@ -5,9 +5,10 @@ def get_character_data():
         nom="Nyx",
         faction="Cobra",
         note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
+        arena="S",
+        campaign="S",
+        faction_sewers="S",
+        mechs = "B",
         tips="_Coming soon..._"
     )
     return chancer

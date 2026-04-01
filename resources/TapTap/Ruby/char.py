@@ -5,9 +5,10 @@ def get_character_data():
         nom="Ruby",
         faction="Kodiak",
         note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
+        arena="A-",
+        campaign="A-",
+        faction_sewers="S-",
+        mechs="A+",
         tips="_Coming soon..._"
     )
     return chancer
