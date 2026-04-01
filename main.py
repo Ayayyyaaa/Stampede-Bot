@@ -381,10 +381,11 @@ async def character(interaction: discord.Interaction, character_name: str):
             color=colour
         )
         
-        embed.add_field(name="<:arena:1488581637917769738> Arena", value=perso.get_arena(), inline=False)
+        embed.add_field(name="<:arena:1488581637917769738> Arena", value=perso.get_arena(), inline=True)
         embed.add_field(name="<:campaign:1488582421266829364> Campaign / Sewers", value=perso.get_campaign(), inline=False)
         embed.add_field(name="<:faction_sewer:1488582418985255003> Faction Sewers", value=perso.get_faction_sewers(), inline=True)
-        embed.add_field(name="<:usefull:1488293835137093683> Tips", value=perso.get_tips(), inline=True)
+        embed.add_field(name="<:mecha_icon:1488150151519535144> Mechs", value=perso.get_mechs(), inline=True)
+        embed.add_field(name="<:usefull:1488293835137093683> Tips", value=perso.get_tips(), inline=False)
         
         embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
 

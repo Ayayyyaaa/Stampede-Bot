@@ -1,5 +1,5 @@
 class Personnage:
-    def __init__(self, nom, faction, note, arena, campaign, faction_sewers, tips):
+    def __init__(self, nom, faction, note, arena, campaign, faction_sewers, tips, mechs='_Coming soon..._'):
         self.nom = nom
         self.faction = faction
         self.note = note
@@ -7,6 +7,7 @@ class Personnage:
         self.campaign = campaign
         self.faction_sewers = faction_sewers
         self.tips = tips
+        self.mechs = mechs
 
     # Les Getters
     def get_nom(self):
@@ -29,3 +30,6 @@ class Personnage:
 
     def get_tips(self):
         return self.tips
+    
+    def get_mechs(self):
+        return self.mechs
