@@ -342,7 +342,7 @@ async def slash_choice(interaction: discord.Interaction, options: str):
 
 
 @bot.tree.command(name="character", description="Show some tips about the character")
-@discord.app_commands.describe(character_name="Nom du personnage (ex: Raja, Cobra, etc.)")
+@discord.app_commands.describe(character_name="Character name (Zemus, Spekkio, etc.)")
 async def character(interaction: discord.Interaction, character_name: str):
     dossier = character_name.capitalize()
 
