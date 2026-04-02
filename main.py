@@ -141,14 +141,15 @@ char_emojis = {
     "Rocco" : "<a:rocco:1489283925548204094>",
     "Ruby" : "<a:ruby:1489283947480354876>",
     "Scythe" : "<a:scythe:1489283989255491594>",
-    "Safros" : "<:safros:1489283967340515430>",
+    "Safros" : "<a:safros:1489283967340515430>",
     "Spekkio" : "<a:spekkio:1489284013515346062>",
     "Talon" : "<a:talon:1489284035531374662>",
     "Terryx" : "<a:terryx:1489284057920573660>",
     "Vex" : "<a:vex:1489284097301020763>",
     "Xeno" : "<a:xeno:1489284128833798244>",
     "Zemus" : "<a:zemus:1489284152304865391>",
-    "Zura" : "<a:zura:1489284175667265606>"
+    "Zura" : "<a:zura:1489284175667265606>",
+    "fgfg" : ""
 }
 
 @bot.tree.command(name="tierlist", description="Affiche la tier list globale de tous les personnages")
