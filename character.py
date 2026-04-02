@@ -9,7 +9,6 @@ class Personnage:
         self.tips = tips
         self.mechs = mechs
 
-    # Les Getters
     def get_nom(self):
         return self.nom
 
