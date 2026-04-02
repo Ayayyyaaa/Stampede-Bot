@@ -387,12 +387,12 @@ async def character(interaction: discord.Interaction, character_name: str):
         embed.add_field(name="<:mecha_icon:1488150151519535144> Mechs", value=perso.get_mechs(), inline=True)
         embed.add_field(name="<:usefull:1488293835137093683> Tips", value=perso.get_tips(), inline=False)
         
-        embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
+        embed.set_image(url=f"attachment://{nom_fichier_image}")
 
-        #if os.path.exists(chemin_gif):
-        #    fichier_gif = discord.File(chemin_gif, filename=nom_fichier_gif)
-        #    fichiers_a_envoyer.append(fichier_gif) 
-        #    embed.set_image(url=f"attachment://{nom_fichier_gif}") 
+        if os.path.exists(chemin_gif):
+            fichier_gif = discord.File(chemin_gif, filename=nom_fichier_gif)
+            fichiers_a_envoyer.append(fichier_gif) 
+            embed.set_thumbnail(url=f"attachment://{nom_fichier_gif}") 
 
         await interaction.response.send_message(embed=embed, files=fichiers_a_envoyer)
         
