@@ -4,10 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Zura",
         faction="Howler",
-        note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        note="A",
+        arena="B",
+        campaign="A-",
+        faction_sewers="A+",
+        mechs="A+",
+        tips="• Good support\n• Gives somme buffs\n• Improve survavibility"
     )
     return chancer

@@ -9,6 +9,6 @@ def get_character_data():
         campaign="B",
         faction_sewers="B",
         mechs = "B",
-        tips="He's here..."
+        tips="• He's here...\n• He's still here..."
     )
     return chancer

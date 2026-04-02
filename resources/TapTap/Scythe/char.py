@@ -4,11 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Scythe",
         faction="Crane",
-        note="_Coming soon..._",
+        note="S-",
         arena="A+",
         campaign="S-",
         faction_sewers="S-",
         mechs = "S",
-        tips="_Coming soon..._"
+        tips="• Strong dps\n• Be aware to build a good crit rate"
     )
     return chancer

@@ -7,7 +7,7 @@ def get_character_data():
         note="_Coming soon..._",
         arena="_Coming soon..._",
         campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        faction_sewers="S",
+        tips="• New character\n• Very good for Mantis sewer\n• Don't know his rank yet"
     )
     return chancer

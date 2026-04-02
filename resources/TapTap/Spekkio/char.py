@@ -4,11 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Spekkio",
         faction="Kodiak",
-        note="_Coming soon..._",
+        note="A-",
         arena="C",
         campaign="C",
         faction_sewers="B-",
         mechs = "S+",
-        tips="_Coming soon..._"
+        tips="• **Best** dps for mech event\n• Bad everywhere else"
     )
     return chancer

@@ -4,10 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Vex",
         faction="Mantis",
-        note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        note="B-",
+        arena="C",
+        campaign="B",
+        faction_sewers="A-",
+        mechs="C",
+        tips="• Can be good for Mantis sewer"
     )
     return chancer

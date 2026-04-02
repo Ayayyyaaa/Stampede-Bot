@@ -4,7 +4,7 @@ def get_character_data():
     chancer = Personnage(
         nom="Ruby",
         faction="Kodiak",
-        note="_Coming soon..._",
+        note="A+",
         arena="A-",
         campaign="A-",
         faction_sewers="S-",

@@ -4,10 +4,11 @@ def get_character_data():
     chancer = Personnage(
         nom="Zemus",
         faction="Cobra",
-        note="_Coming soon..._",
-        arena="_Coming soon..._",
-        campaign="_Coming soon..._",
-        faction_sewers="_Coming soon..._",
-        tips="_Coming soon..._"
+        note="S-",
+        arena="B+",
+        campaign="B+",
+        faction_sewers="A+",
+        mechs="S",
+        tips="• Essential support for Mech event"
     )
     return chancer
