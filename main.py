@@ -220,19 +220,19 @@ async def tierlist(interaction: discord.Interaction, categorie: str = "general")
             ranking[lettre][modificateur].append(perso.get_nom())
 
         except Exception as e:
-            print(f"⚠️ Erreur lors du chargement de {dossier} pour la tierlist: {e}")
+            print(f"⚠️ Error for the folder {dossier} for the tierlist : {e}")
 
     titres_embed = {
         "general": "<:top1:1489297584752168990> General Tier List",
         "arena": "<:arena:1488581637917769738> Smash / Arena Tier List",
         "campaign": "<:campaign:1488582421266829364> Campaign / Sewers Tier List",
-        "sewers": "<:faction_sewer:1488582418985255003> Sewers Tier List",
+        "sewers": "<:faction_sewer:1488582418985255003> Faction Sewers Tier List",
         "mechs": "<:mecha_icon:1488150151519535144> Mechs Tier List"
     }
 
     embed = discord.Embed(
         title=titres_embed.get(categorie, "Tier List"),
-        description="Classement des personnages, du meilleur au pire.",
+        description="Best characters for the selected gamemode.",
         color=discord.Color.gold()
     )
 
