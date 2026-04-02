@@ -139,103 +139,22 @@ char_emojis = {
     "Nyx" : "<a:nyx:1489283483376292004>",
     "Otto" : "<a:otto:1489283515240681512>",
     "Pyra" : "<a:pyra:1489283871802392586>",
-    "Raja" : "<a:raja:1489283901473034401>",
+    "Raja" : "<a:raja:1489283871802392586>",
     "Rocco" : "<a:rocco:1489283925548204094>",
     "Ruby" : "<a:ruby:1489283947480354876>",
     "Scythe" : "<a:scythe:1489283989255491594>",
-    "Safros" : "<:safros:1489283967340515430>",
+    "Safros" : "<a:safros:1489283967340515430>",
     "Spekkio" : "<a:spekkio:1489284013515346062>",
     "Talon" : "<a:talon:1489284035531374662>",
     "Terryx" : "<a:terryx:1489284057920573660>",
     "Vex" : "<a:vex:1489284097301020763>",
     "Xeno" : "<a:xeno:1489284128833798244>",
     "Zemus" : "<a:zemus:1489284152304865391>",
-    "Zura" : "<a:zura:1489284175667265606>"
+    "Zura" : "<a:zura:1489288387268710571>"
 }
 
-class CharacterDropdown(discord.ui.Select):
-    def __init__(self, options, placeholder):
-        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
-
-    async def callback(self, interaction: discord.Interaction):
-        character_name = self.values[0]
-        dossier = character_name.capitalize()
-        
-        nom_fichier_image = f"{character_name.lower()}_icon.png"
-        chemin_image = f"resources/TapTap/{dossier}/{nom_fichier_image}"
-        
-        nom_fichier_gif = f"{character_name.lower()}.gif"
-        chemin_gif = f"resources/TapTap/{dossier}/{nom_fichier_gif}"
-        
-        chemin_script = f"resources/TapTap/{dossier}/char.py"
-
-        if not os.path.exists(chemin_script):
-            await interaction.response.send_message(f"❌ Character {dossier} inexistant.", ephemeral=True)
-            return
-
-        try:
-            spec = importlib.util.spec_from_file_location(f"module_{dossier}", chemin_script)
-            char_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(char_module)
-
-            perso = char_module.get_character_data()
-
-            fichiers_a_envoyer = []
-            fichier_discord = discord.File(chemin_image, filename=nom_fichier_image)
-            fichiers_a_envoyer.append(fichier_discord)
-            emoji, colour = factions.get(perso.get_faction(), ("❓", discord.Color.default()))
-
-            gros_titre = f"# {emoji} {perso.get_nom()} {emoji}\n"
-            embed = discord.Embed(
-                description=f"{gros_titre}**Rating : {perso.get_note()}\nFaction : {perso.get_faction()}**",
-                color=colour
-            )
-            
-            embed.add_field(name="<:arena:1488581637917769738> Arena", value=perso.get_arena(), inline=True)
-            embed.add_field(name="<:campaign:1488582421266829364> Campaign / Sewers", value=perso.get_campaign(), inline=True)
-            embed.add_field(name="<:faction_sewer:1488582418985255003> Smash / Faction Sewers", value=perso.get_faction_sewers(), inline=False)
-            embed.add_field(name="<:mecha_icon:1488150151519535144> Mechs", value=perso.get_mechs(), inline=True)
-            embed.add_field(name="<:usefull:1488293835137093683> Tips", value=perso.get_tips(), inline=False)
-            
-            embed.set_thumbnail(url=f"attachment://{nom_fichier_image}")
-
-            if os.path.exists(chemin_gif):
-                fichier_gif = discord.File(chemin_gif, filename=nom_fichier_gif)
-                fichiers_a_envoyer.append(fichier_gif) 
-                embed.set_image(url=f"attachment://{nom_fichier_gif}") 
-
-            await interaction.response.send_message(embed=embed, files=fichiers_a_envoyer, ephemeral=True)
-            
-        except Exception as e:
-            await interaction.response.send_message(f"❌ Server error : `{e}`", ephemeral=True)
-
-
-class TierListView(discord.ui.View):
-    def __init__(self, tous_les_personnages, dictionnaire_emojis):
-        super().__init__(timeout=None) 
-
-        chunk_size = 25
-        chunks = [tous_les_personnages[i:i + chunk_size] for i in range(0, len(tous_les_personnages), chunk_size)]
-        
-        for index, chunk in enumerate(chunks):
-            options = []
-            for nom in chunk:
-                emoji_str = dictionnaire_emojis.get(nom)
-                emoji_obj = discord.PartialEmoji.from_str(emoji_str) if emoji_str else None
-                
-                options.append(discord.SelectOption(
-                    label=nom, 
-                    value=nom, 
-                    emoji=emoji_obj,
-                    description=f"View {nom}"
-                ))
-            
-            placeholder = "Select a character..." if len(chunks) == 1 else f"Characters ({index*25 + 1} to {index*25 + len(chunk)})"
-            self.add_item(CharacterDropdown(options=options, placeholder=placeholder))
-
-
-@bot.tree.command(name="tierlist", description="Displays the list of the characters")
-@app_commands.describe(categorie="Choose the gamemode")
+@bot.tree.command(name="tierlist", description="Shows the tierlist of the gamemode")
+@app_commands.describe(categorie="Choose the gamemode (default general)")
 @app_commands.choices(categorie=[
     Choice(name="General", value="general"),
     Choice(name="Arena", value="arena"),
@@ -245,7 +164,7 @@ class TierListView(discord.ui.View):
 ])
 async def tierlist(interaction: discord.Interaction, categorie: str = "general"):
     await interaction.response.defer()
-    
+
     ranking = {
         "S": {"+": [], "": [], "-": []},
         "A": {"+": [], "": [], "-": []},
@@ -257,10 +176,8 @@ async def tierlist(interaction: discord.Interaction, categorie: str = "general")
     base_path = "resources/TapTap"
     
     if not os.path.exists(base_path):
-        await interaction.followup.send("❌ Folder inexistant.")
+        await interaction.followup.send("❌ Server error")
         return
-
-    tous_les_personnages = []
 
     for dossier in os.listdir(base_path):
         chemin_dossier = os.path.join(base_path, dossier)
@@ -301,10 +218,9 @@ async def tierlist(interaction: discord.Interaction, categorie: str = "general")
                 modificateur = ""
 
             ranking[lettre][modificateur].append(perso.get_nom())
-            tous_les_personnages.append(perso.get_nom())
 
         except Exception as e:
-            print(f"⚠️ Server error for {dossier}: {e}")
+            print(f"⚠️ Error for the folder {dossier} for the tierlist : {e}")
 
     titres_embed = {
         "general": "<:top1:1489297584752168990> General Tier List",
@@ -322,7 +238,6 @@ async def tierlist(interaction: discord.Interaction, categorie: str = "general")
 
     tier_emojis = {"S": "<:rangS:1489296503481696316>", "A": "<:rangA:1489296517612179507>", "B": "<:rangB:1489296532455948459>", "C": "<:rangC:1489296559987490946>", "D": "<:rangD:1489296580954554469>"}
 
-
     for lettre, modificateurs in ranking.items():
         lignes_tier = []
         
@@ -330,9 +245,12 @@ async def tierlist(interaction: discord.Interaction, categorie: str = "general")
             persos = modificateurs[mod]
             if persos:
                 persos.sort() 
+                
+                # Conversion du nom en émoji
                 persos_a_afficher = [char_emojis.get(p, p) for p in persos]
                 
                 lignes_tier.append(f"**{lettre}{mod}** : {' '.join(persos_a_afficher)}")
+
         if lignes_tier:
             emoji = tier_emojis.get(lettre, "▪️")
             embed.add_field(
@@ -340,9 +258,8 @@ async def tierlist(interaction: discord.Interaction, categorie: str = "general")
                 value="\n".join(lignes_tier), 
                 inline=False
             )
-    tous_les_personnages.sort()
-    vue = TierListView(tous_les_personnages, char_emojis)
-    await interaction.followup.send(embed=embed, view=vue)
+
+    await interaction.followup.send(embed=embed)
 
 
 
