@@ -157,9 +157,9 @@ char_emojis = {
 @app_commands.describe(categorie="Choose the gamemode (default general)")
 @app_commands.choices(categorie=[
     Choice(name="General", value="general"),
-    Choice(name="Smash / Arena", value="arena"),
+    Choice(name="Arena", value="arena"),
     Choice(name="Campaign / Sewers", value="campaign"),
-    Choice(name="Faction Sewers", value="sewers"),
+    Choice(name="Smash / Faction Sewers", value="sewers"),
     Choice(name="Mechs", value="mechs")
 ])
 async def tierlist(interaction: discord.Interaction, categorie: str = "general"):
@@ -224,9 +224,9 @@ async def tierlist(interaction: discord.Interaction, categorie: str = "general")
 
     titres_embed = {
         "general": "<:top1:1489297584752168990> General Tier List",
-        "arena": "<:arena:1488581637917769738> Smash / Arena Tier List",
+        "arena": "<:arena:1488581637917769738> Arena Tier List",
         "campaign": "<:campaign:1488582421266829364> Campaign / Sewers Tier List",
-        "sewers": "<:faction_sewer:1488582418985255003> Faction Sewers Tier List",
+        "sewers": "<:faction_sewer:1488582418985255003> Smash / Faction Sewers Tier List",
         "mechs": "<:mecha_icon:1488150151519535144> Mechs Tier List"
     }
 
