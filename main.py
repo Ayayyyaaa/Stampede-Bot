@@ -148,8 +148,7 @@ char_emojis = {
     "Vex" : "<a:vex:1489284097301020763>",
     "Xeno" : "<a:xeno:1489284128833798244>",
     "Zemus" : "<a:zemus:1489284152304865391>",
-    "Zura" : "<a:zura:1489284175667265606>",
-    "fgfg" : ""
+    "Zura" : "<a:zura:1489288387268710571>"
 }
 
 @bot.tree.command(name="tierlist", description="Affiche la tier list globale de tous les personnages")
