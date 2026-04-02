@@ -110,12 +110,126 @@ async def on_raw_reaction_add(payload):
         print(f"Erreur discord : {e}")
 
 
+char_emojis = {
+    "Toro": "<a:toro:1489280319503859802>",#1489281381224812637 1489280319503859802
+    "Zykan" : "<a:zykan:1489280289027915997>",
+    "Chancer" : "<a:chancer:1489282062493028372>",
+    "Dax" : "<a:dax:1489282899755667668>",
+    "Duke" : "<a:duke:1489282918760321166>",
+    "Face" : "<a:face:1489282939597488279>",
+    "Fenrus" : "<a:fenrus:1489282974342975680>",
+    "Flint" : "<a:flint:1489282995528532098>",
+    "Gorongo" : "<a:gorongo:1489283018697867344>",
+    "Hana" : "<a:hana:1489283043964489899>",
+    "Jasper" : "<a:jasper:1489283065791643840>",
+    "Karma" : "<a:karma:1489283083730424019>",
+    "Komodo" : "<a:komodo:1489283124218167406>",
+    "Kotaro" : "<a:kotaro:1489283150159806646>",
+    "Laguna" : "<a:laguna:1489283184142061810>",
+    "Leene" : "<a:leene:1489283207332630670>",
+    "Lilly" : "<a:lilly:1489283234570305717>",
+    "Locke" : "<a:locke:1489283273938042920>",
+    "Lucius" : "<a:lucius:1489283300605300836>",
+    "Magus" : "<a:magus:1489283342099550359>",
+    "Malric" : "<a:malric:1489283373342916740>",
+    "Mazu" : "<a:mazu:1489283419715403886>",
+    "Necro" : "<a:necro:1489283443220283494>",
+    "Nyx" : "<a:nyx:1489283483376292004>",
+    "Otto" : "<a:otto:1489283515240681512>",
+    "Pyra" : "<a:pyra:1489283871802392586>",
+    "Raja" : "<a:raja:1489283871802392586>",
+    "Rocco" : "<a:rocco:1489283925548204094>",
+    "Ruby" : "<a:ruby:1489283947480354876>",
+    "Scythe" : "<a:scythe:1489283989255491594>",
+    "Safros" : "<:safros:1489283967340515430>",
+    "Spekkio" : "<a:spekkio:1489284013515346062>",
+    "Talon" : "<a:talon:1489284035531374662>",
+    "Terryx" : "<a:terryx:1489284057920573660>",
+    "Vex" : "<a:vex:1489284097301020763>",
+    "Xeno" : "<a:xeno:1489284128833798244>",
+    "Zemus" : "<a:zemus:1489284152304865391>",
+    "Zura" : "<a:zura:1489284175667265606>"
+}
 
+@bot.tree.command(name="tierlist", description="Affiche la tier list globale de tous les personnages")
+async def tierlist(interaction: discord.Interaction):
+    await interaction.response.defer()
 
+    ranking = {
+        "S": {"+": [], "": [], "-": []},
+        "A": {"+": [], "": [], "-": []},
+        "B": {"+": [], "": [], "-": []},
+        "C": {"+": [], "": [], "-": []},
+        "D": {"+": [], "": [], "-": []}
+    }
 
+    base_path = "resources/TapTap"
+    
+    if not os.path.exists(base_path):
+        await interaction.followup.send("❌ Dossier resources introuvable.")
+        return
 
+    for dossier in os.listdir(base_path):
+        chemin_dossier = os.path.join(base_path, dossier)
+        
+        if not os.path.isdir(chemin_dossier):
+            continue
 
+        chemin_script = os.path.join(chemin_dossier, "char.py")
+        if not os.path.exists(chemin_script):
+            continue
 
+        try:
+            spec = importlib.util.spec_from_file_location(f"module_{dossier}", chemin_script)
+            char_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(char_module)
+
+            perso = char_module.get_character_data()
+            
+            note_complete = str(perso.get_note()).strip().upper() 
+            
+            if not note_complete or note_complete[0] not in ranking:
+                continue
+
+            lettre = note_complete[0]
+            modificateur = note_complete[1:] if len(note_complete) > 1 else ""
+
+            if modificateur not in ["+", "", "-"]:
+                modificateur = ""
+
+            ranking[lettre][modificateur].append(perso.get_nom())
+
+        except Exception as e:
+            print(f"⚠️ Erreur lors du chargement de {dossier} pour la tierlist: {e}")
+
+    embed = discord.Embed(
+        title="🏆 Tier List Générale",
+        description="Classement de tous les personnages, du meilleur au pire.",
+        color=discord.Color.gold()
+    )
+
+    tier_emojis = {"S": "👑", "A": "⚔️", "B": "🛡️", "C": "⚖️", "D": "⚰️"}
+
+    for lettre, modificateurs in ranking.items():
+        lignes_tier = []
+        
+        for mod in ["+", "", "-"]:
+            persos = modificateurs[mod]
+            if persos:
+                persos.sort()
+                persos_a_afficher = [char_emojis.get(p, p) for p in persos]
+
+                lignes_tier.append(f"**{lettre}{mod}** : {' '.join(persos_a_afficher)}")
+
+        if lignes_tier:
+            emoji = tier_emojis.get(lettre, "▪️")
+            embed.add_field(
+                name=f"{emoji} Tier {lettre}", 
+                value="\n".join(lignes_tier), 
+                inline=False
+            )
+
+    await interaction.followup.send(embed=embed)
 
 
 
