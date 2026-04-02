@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 import os
 from random import randint, choice, sample
@@ -10,6 +11,7 @@ from zoneinfo import ZoneInfo
 import re
 import asyncio
 import importlib.util
+from discord.app_commands import Choice
 
 load_dotenv()
 intents = discord.Intents.default()
@@ -151,8 +153,16 @@ char_emojis = {
     "Zura" : "<a:zura:1489288387268710571>"
 }
 
-@bot.tree.command(name="tierlist", description="Affiche la tier list globale de tous les personnages")
-async def tierlist(interaction: discord.Interaction):
+@bot.tree.command(name="tierlist", description="Shows the tierlist of the gamemode")
+@app_commands.describe(categorie="Choose the gamemode (default general)")
+@app_commands.choices(categorie=[
+    Choice(name="General", value="general"),
+    Choice(name="Smash / Arena", value="arena"),
+    Choice(name="Campaign / Sewers", value="campaign"),
+    Choice(name="Faction Sewers", value="sewers"),
+    Choice(name="Mechs", value="mechs")
+])
+async def tierlist(interaction: discord.Interaction, categorie: str = "general"):
     await interaction.response.defer()
 
     ranking = {
@@ -166,7 +176,7 @@ async def tierlist(interaction: discord.Interaction):
     base_path = "resources/TapTap"
     
     if not os.path.exists(base_path):
-        await interaction.followup.send("❌ Dossier resources introuvable.")
+        await interaction.followup.send("❌ Server error")
         return
 
     for dossier in os.listdir(base_path):
@@ -185,9 +195,19 @@ async def tierlist(interaction: discord.Interaction):
             spec.loader.exec_module(char_module)
 
             perso = char_module.get_character_data()
-            
-            note_complete = str(perso.get_note()).strip().upper() 
-            
+            if categorie == "arena":
+                note_brute = perso.get_arena()
+            elif categorie == "campaign":
+                note_brute = perso.get_campaign()
+            elif categorie == "sewers":
+                note_brute = perso.get_faction_sewers()
+            elif categorie == "mechs":
+                note_brute = perso.get_mechs()
+            else:
+                note_brute = perso.get_note() 
+
+            note_complete = str(note_brute).strip().upper() 
+
             if not note_complete or note_complete[0] not in ranking:
                 continue
 
@@ -202,13 +222,21 @@ async def tierlist(interaction: discord.Interaction):
         except Exception as e:
             print(f"⚠️ Erreur lors du chargement de {dossier} pour la tierlist: {e}")
 
+    titres_embed = {
+        "general": "<:top1:1489297584752168990> General Tier List",
+        "arena": "<:arena:1488581637917769738> Smash / Arena Tier List",
+        "campaign": "<:campaign:1488582421266829364> Campaign / Sewers Tier List",
+        "sewers": "<:faction_sewer:1488582418985255003> Sewers Tier List",
+        "mechs": "<:mecha_icon:1488150151519535144> Mechs Tier List"
+    }
+
     embed = discord.Embed(
-        title="🏆 Tier List Générale",
-        description="Classement de tous les personnages, du meilleur au pire.",
+        title=titres_embed.get(categorie, "Tier List"),
+        description="Classement des personnages, du meilleur au pire.",
         color=discord.Color.gold()
     )
 
-    tier_emojis = {"S": "👑", "A": "⚔️", "B": "🛡️", "C": "⚖️", "D": "⚰️"}
+    tier_emojis = {"S": "<:rangS:1489296503481696316>", "A": "<:rangA:1489296517612179507>", "B": "<:rangB:1489296532455948459>", "C": "<:rangC:1489296559987490946>", "D": "<:rangD:1489296580954554469>"}
 
     for lettre, modificateurs in ranking.items():
         lignes_tier = []
@@ -216,9 +244,11 @@ async def tierlist(interaction: discord.Interaction):
         for mod in ["+", "", "-"]:
             persos = modificateurs[mod]
             if persos:
-                persos.sort()
+                persos.sort() 
+                
+                # Conversion du nom en émoji
                 persos_a_afficher = [char_emojis.get(p, p) for p in persos]
-
+                
                 lignes_tier.append(f"**{lettre}{mod}** : {' '.join(persos_a_afficher)}")
 
         if lignes_tier:
