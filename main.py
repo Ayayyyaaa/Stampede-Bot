@@ -17,7 +17,6 @@ class StampedeBot(commands.Bot):
         await self.load_extension("src.events")
         await self.load_extension("src.commands")
         await self.load_extension("src.announcement")
-
         await self.tree.sync()
         print("✅ Commandes Slash synchronisées.")
 
