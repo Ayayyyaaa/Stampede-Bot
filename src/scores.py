@@ -134,7 +134,7 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
     ax.set_xticks(range(len(dates)))
     ax.set_xticklabels(dates, fontsize=8, color=COLORS["text"])
     ax.set_ylabel("Score", color=COLORS["text"])
-    title = f"<a:research:1488144464835776622> Changes in the {player} score"
+    title = f"Changes in the {player} score"
     if event_type:
         title += f"  —  {TYPE_LABEL[event_type]}"
     ax.set_title(title, fontsize=13, fontweight="bold", color=COLORS["text"], pad=12)
@@ -249,19 +249,19 @@ class ScoresCog(commands.Cog):
         embed.set_footer(text=f"Added by {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="add_score", description="Adds or updates a member's score for an event")
+
+    @app_commands.command(name="add_scores", description="Add scores for the whole club at once — format: Player1:score1, Player2:score2, ...")
     @app_commands.describe(
         event_type="Event type",
         date="Date of the event (YYYY-MM-DD format)",
-        player="Player's name",
-        score="Score achieved"
+        scores="Scores in the format: Player1:score1, Player2:score2, ..."
     )
     @app_commands.choices(event_type=[
         Choice(name="Smash only", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
-    async def add_score(self, interaction: discord.Interaction,
-                        event_type: str, date: str, player: str, score: int):
+    async def add_scores(self, interaction: discord.Interaction,
+                         event_type: str, date: str, scores: str):
 
         if not any(r.id in (config.COLEAD, config.FURYMEMBER) for r in interaction.user.roles):
             await interaction.response.send_message("❌ You don't have the permission to do that.", ephemeral=True)
@@ -274,32 +274,88 @@ class ScoresCog(commands.Cog):
                 "❌ Invalid date format. Use **YYYY-MM-DD**.", ephemeral=True)
             return
 
+        parsed = {}
+        errors = []
+        for entry in scores.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            if ":" not in entry:
+                errors.append(f"`{entry}` — missing `:` separator")
+                continue
+            parts = entry.rsplit(":", 1)
+            player_name = parts[0].strip()
+            score_str = parts[1].strip().replace(" ", "").replace("\u202f", "").replace("\u00a0", "")
+            if not player_name:
+                errors.append(f"`{entry}` — empty player name")
+                continue
+            try:
+                parsed[player_name] = int(score_str)
+            except ValueError:
+                errors.append(f"`{entry}` — `{score_str}` is not a valid number")
+
+        if not parsed:
+            msg = "❌ No valid entries found.\nExpected format: `Player1:score1, Player2:score2, ...`"
+            if errors:
+                msg += "\n\n**Errors:**\n" + "\n".join(errors)
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+
         data = load_data()
         event = find_event(data, event_type, date)
         if not event:
             await interaction.response.send_message(
-                f"❌ No events **{TYPE_LABEL[event_type]}** found for the **{date}**.\n"
+                f"❌ No events **{TYPE_LABEL[event_type]}** found for **{date}**.\n"
                 "First, create it using `/add_event`.", ephemeral=True)
             return
 
-        old_score = event["scores"].get(player)
-        event["scores"][player] = score
-        save_data(data)
+        added, updated = [], []
+        for player_name, score in parsed.items():
+            if player_name in event["scores"]:
+                updated.append((player_name, event["scores"][player_name], score))
+            else:
+                added.append((player_name, score))
+            event["scores"][player_name] = score
 
-        action = "updated" if old_score is not None else "added"
-        diff = f" *(former : {old_score:,})*" if old_score is not None else ""
+        save_data(data)
         total = sum(event["scores"].values())
 
         embed = discord.Embed(
-            title=f"<:announcement:1496817320440500335> Score {action} — {TYPE_LABEL[event_type]}",
+            title=f"<:announcement:1496817320440500335> Club scores saved — {TYPE_LABEL[event_type]} · {date}",
             color=discord.Color.green(),
             timestamp=datetime.datetime.now()
         )
-        embed.add_field(name="<a:terryx:1489284057920573660> Player", value=player, inline=True)
-        embed.add_field(name="<:optis:1488294635519479918> Score", value=f"{score:,}{diff}", inline=True)
-        embed.add_field(name="<:calendar:1496816276780224512> Event", value=date, inline=True)
-        embed.add_field(name="<:top1:1489297584752168990> Total club", value=f"{total:,}", inline=False)
-        embed.set_footer(text=f"Par {interaction.user.display_name}")
+
+        if added:
+            lines = "\n".join(f"**{p}** → {s:,}" for p, s in added)
+            if len(lines) > 1024:
+                lines = lines[:1020] + "\n..."
+            embed.add_field(
+                name=f"<a:terryx:1489284057920573660> Added ({len(added)})",
+                value=lines, inline=False
+            )
+
+        if updated:
+            lines = "\n".join(f"**{p}** → {new:,} *(was {old:,})*" for p, old, new in updated)
+            if len(lines) > 1024:
+                lines = lines[:1020] + "\n..."
+            embed.add_field(
+                name=f"<:optis:1488294635519479918> Updated ({len(updated)})",
+                value=lines, inline=False
+            )
+
+        if errors:
+            embed.add_field(
+                name=f"⚠️ Skipped ({len(errors)})",
+                value="\n".join(errors)[:1024], inline=False
+            )
+
+        embed.add_field(
+            name="<:top1:1489297584752168990> Club total",
+            value=f"{total:,}  ·  {len(event['scores'])} players registered",
+            inline=False
+        )
+        embed.set_footer(text=f"By {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="scores_club", description="Chart: Change in the club’s total score")
