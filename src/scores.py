@@ -22,14 +22,29 @@ def load_data() -> dict:
     os.makedirs("data", exist_ok=True)
     if not os.path.exists(DATA_FILE):
         save_data({"events": []})
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        return {"events": []}
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Validate structure
+        if not isinstance(data, dict) or "events" not in data:
+            raise ValueError("Invalid structure")
+        return data
+    except (json.JSONDecodeError, ValueError):
+        # JSON corrompu : backup et réinitialisation
+        backup = DATA_FILE + ".bak"
+        if os.path.exists(DATA_FILE):
+            os.replace(DATA_FILE, backup)
+        save_data({"events": []})
+        return {"events": []}
 
 def save_data(data: dict):
-    """Sauvegarde les données dans le fichier JSON."""
+    """Sauvegarde les données dans le fichier JSON (écriture atomique)."""
     os.makedirs("data", exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
+    tmp = DATA_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, DATA_FILE)  # atomique : jamais de fichier à moitié écrit
 
 def find_event(data: dict, event_type: str, date_str: str) -> dict | None:
     """Trouve un événement par type et date."""
@@ -158,7 +173,8 @@ def chart_average_per_player(data: dict, event_type: str | None = None) -> Bytes
         events = [e for e in events if e["type"] == event_type]
 
     if not events:
-        raise ValueError("No event found")
+        label = f" of type **{TYPE_LABEL[event_type]}**" if event_type else ""
+        raise ValueError(f"No event found{label}. Create one first with `/add_event`.")
 
     player_scores: dict[str, list] = {}
     for e in events:
@@ -166,7 +182,8 @@ def chart_average_per_player(data: dict, event_type: str | None = None) -> Bytes
             player_scores.setdefault(player, []).append(score)
 
     if not player_scores:
-        raise ValueError("No registered score found")
+        label = f" for **{TYPE_LABEL[event_type]}**" if event_type else ""
+        raise ValueError(f"No scores registered yet{label}. Add scores with `/add_scores`.")
 
     averages = {p: np.mean(s) for p, s in player_scores.items()}
     averages = dict(sorted(averages.items(), key=lambda x: x[1], reverse=True))
@@ -497,9 +514,19 @@ class ScoresCog(commands.Cog):
 
         class ConfirmView(discord.ui.View):
             def __init__(self):
-                super().__init__(timeout=30)
+                super().__init__(timeout=60)
                 self.confirmed = False
- 
+
+            async def on_timeout(self):
+                # Disable all buttons when the view times out
+                for item in self.children:
+                    item.disabled = True
+                try:
+                    await interaction.edit_original_response(
+                        content="⏱️ Confirmation timed out.", embed=None, view=None)
+                except Exception:
+                    pass
+
             @discord.ui.button(label="✅ Confirm deletion", style=discord.ButtonStyle.danger)
             async def confirm(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
                 if btn_interaction.user.id != interaction.user.id:
@@ -507,6 +534,8 @@ class ScoresCog(commands.Cog):
                     return
                 self.confirmed = True
                 self.stop()
+                # Acknowledge immediately to avoid Unknown Interaction
+                await btn_interaction.response.defer()
                 data2 = load_data()
                 data2["events"] = [e for e in data2["events"]
                                    if not (e["type"] == event_type and e["date"] == date)]
@@ -519,15 +548,17 @@ class ScoresCog(commands.Cog):
                     timestamp=datetime.datetime.now()
                 )
                 embed_ok.set_footer(text=f"Par {btn_interaction.user.display_name}")
-                await btn_interaction.response.edit_message(embed=embed_ok, view=None)
- 
+                await btn_interaction.edit_original_response(embed=embed_ok, view=None)
+
             @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
             async def cancel(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
                 if btn_interaction.user.id != interaction.user.id:
                     await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
                     return
                 self.stop()
-                await btn_interaction.response.edit_message(
+                # Acknowledge immediately to avoid Unknown Interaction
+                await btn_interaction.response.defer()
+                await btn_interaction.edit_original_response(
                     content="<:usefull:1488293835137093683> Deletion cancelled.", embed=None, view=None)
  
         embed_confirm = discord.Embed(
@@ -580,14 +611,24 @@ class ScoresCog(commands.Cog):
  
         class ConfirmView(discord.ui.View):
             def __init__(self):
-                super().__init__(timeout=30)
- 
+                super().__init__(timeout=60)
+
+            async def on_timeout(self):
+                for item in self.children:
+                    item.disabled = True
+                try:
+                    await interaction.edit_original_response(
+                        content="⏱️ Confirmation timed out.", embed=None, view=None)
+                except Exception:
+                    pass
+
             @discord.ui.button(label="<:announcement:1496817320440500335> Confirm", style=discord.ButtonStyle.danger)
             async def confirm(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
                 if btn_interaction.user.id != interaction.user.id:
                     await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
                     return
                 self.stop()
+                await btn_interaction.response.defer()
                 data2 = load_data()
                 count = 0
                 for e in data2["events"]:
@@ -607,14 +648,17 @@ class ScoresCog(commands.Cog):
                     timestamp=datetime.datetime.now()
                 )
                 embed_ok.set_footer(text=f"By {btn_interaction.user.display_name}")
-                await btn_interaction.response.edit_message(embed=embed_ok, view=None)
- 
+                await btn_interaction.edit_original_response(embed=embed_ok, view=None)
+
             @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
             async def cancel(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
                 if btn_interaction.user.id != interaction.user.id:
                     await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
                     return
                 self.stop()
+                await btn_interaction.response.defer()
+                await btn_interaction.edit_original_response(
+                    content="<:usefull:1488293835137093683> Deletion cancelled.", embed=None, view=None)
         embed_confirm = discord.Embed(
             title="<a:nyx:1489283483376292004> Confirm deletion ?",
             description=f"Delete **{player}** {scope} ?\n\n**Cette action est irréversible.**",
