@@ -78,19 +78,23 @@ class AnnouncementsCog(commands.Cog):
     async def annonce_vendredi(self):
         if datetime.datetime.now(ZoneInfo("Europe/Paris")).weekday() != 4:
             return
-            
-        salon = self.bot.get_channel(config.SALON_ANNONCE_ID)
-        if not salon:
-            return
 
-        message_texte = "📣 **Event is coming ! Here is a quick reminder of the rules** <@&1378019701484945599>"
-        
-        if self.utiliser_annonce_smash:
-            mon_embed, mes_fichiers = creer_embed_smash() 
-        else:
-            mon_embed, mes_fichiers = creer_embed_mech()
+        # Envoie l'annonce dans chaque serveur configuré
+        for guild_id, guild_config in config.GUILDS.items():
+            salon = self.bot.get_channel(guild_config["SALON_ANNONCE_ID"])
+            if not salon:
+                continue
 
-        await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
+            member_role_id = guild_config["MEMBER"]
+            message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>"
+
+            if self.utiliser_annonce_smash:
+                mon_embed, mes_fichiers = creer_embed_smash()
+            else:
+                mon_embed, mes_fichiers = creer_embed_mech()
+
+            await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
+
         self.utiliser_annonce_smash = not self.utiliser_annonce_smash
 
     @annonce_vendredi.before_loop

@@ -4,7 +4,7 @@ import datetime
 from zoneinfo import ZoneInfo
 import re
 import asyncio
-import config # On importe ton fichier de configuration
+import config
 
 class EventsCog(commands.Cog):
     def __init__(self, bot):
@@ -17,18 +17,23 @@ class EventsCog(commands.Cog):
         guild = self.bot.get_guild(payload.guild_id)
         if not guild:
             return
+
+        guild_config = config.GUILDS.get(payload.guild_id)
+        if not guild_config:
+            return
+
         react_author = guild.get_member(payload.user_id)
         if not react_author:
             return
         
-        lead = any(role.id == config.COLEAD for role in react_author.roles)
+        lead = any(role.id == guild_config["COLEAD"] for role in react_author.roles)
         if not lead:
             return
         
         channel = self.bot.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
         auteur = message.author
-        role = guild.get_role(config.FURYMEMBER)
+        role = guild.get_role(guild_config["MEMBER"])
         
         embed = discord.Embed(
             title="<:Raja:1488127825859838103> Welcome in Stampede Of Fury ! <:Raja:1488127825859838103>",
@@ -67,8 +72,10 @@ class EventsCog(commands.Cog):
     async def on_message(self, message):
         if message.author.bot:
             return
-        
-        if message.channel.id == config.ROUNDTABLE:
+
+        guild_config = config.GUILDS.get(message.guild.id) if message.guild else None
+
+        if guild_config and message.channel.id == guild_config["ROUNDTABLE"]:
             if message.author.id in [config.admin['kazukuta'], config.admin['husgus']]:
                 heure_actuelle = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
                 if 0 <= heure_actuelle < 6:
@@ -103,23 +110,29 @@ class EventsCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
-        salon_log = self.bot.get_channel(config.SALON_LOG_ID)
+        if not message.guild:
+            return
+
+        guild_config = config.GUILDS.get(message.guild.id)
+        if not guild_config:
+            return
+
+        salon_log = self.bot.get_channel(guild_config["SALON_LOG_ID"])
         if not salon_log:
             return
 
         suppresseur = message.author
 
-        if message.guild:
-            await asyncio.sleep(3)
-            try:
-                async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=5):
-                    if entree.target.id == message.author.id:
-                        temps_ecoule = discord.utils.utcnow() - entree.created_at
-                        if temps_ecoule.total_seconds() < 15:
-                            suppresseur = entree.user
-                            break 
-            except discord.Forbidden:
-                pass
+        await asyncio.sleep(3)
+        try:
+            async for entree in message.guild.audit_logs(action=discord.AuditLogAction.message_delete, limit=5):
+                if entree.target.id == message.author.id:
+                    temps_ecoule = discord.utils.utcnow() - entree.created_at
+                    if temps_ecoule.total_seconds() < 15:
+                        suppresseur = entree.user
+                        break 
+        except discord.Forbidden:
+            pass
 
         embed = discord.Embed(
             title="🗑️ Deleted Message",
