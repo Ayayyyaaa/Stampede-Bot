@@ -10,7 +10,8 @@ GUILDS = {
         "SALON_LOG_ID" : 1395388026426753157,
         "ROUNDTABLE" : 1386634739296899186,
         "help1" : 1386634739296899184,
-        "help2" : 1388626869980758207
+        "help2" : 1388626869980758207,
+        "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"]
     },
     1341134017684308080 : {
         "MEMBER" : 1378019701484945599,
@@ -19,7 +20,9 @@ GUILDS = {
         "SALON_LOG_ID" : 1488162984328036442,
         "ROUNDTABLE" : 1380579205363929098,
         "help1" : 1341156549858558145,
-        "help2" : 1487546393936662769}
+        "help2" : 1487546393936662769,
+        "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kalindrov", "Kazukaka"]
+    }
 }
 
 
