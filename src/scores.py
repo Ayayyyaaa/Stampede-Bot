@@ -209,8 +209,8 @@ class ScoresCog(commands.Cog):
         description="Optional description of the event"
     )
     @app_commands.choices(event_type=[
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def add_event(self, interaction: discord.Interaction,
                         event_type: str, date: str, description: str = ""):
@@ -257,8 +257,8 @@ class ScoresCog(commands.Cog):
         score="Score achieved"
     )
     @app_commands.choices(event_type=[
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def add_score(self, interaction: discord.Interaction,
                         event_type: str, date: str, player: str, score: int):
@@ -306,8 +306,8 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def scores_club(self, interaction: discord.Interaction, event_type: str = "all"):
         await interaction.response.defer()
@@ -334,8 +334,8 @@ class ScoresCog(commands.Cog):
     )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def scores_player(self, interaction: discord.Interaction,
                              player: str, event_type: str = "all"):
@@ -360,8 +360,8 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def scores_average(self, interaction: discord.Interaction, event_type: str = "all"):
         await interaction.response.defer()
@@ -384,8 +384,8 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def list_events(self, interaction: discord.Interaction, event_type: str = "all"):
         data = load_data()
@@ -421,9 +421,8 @@ class ScoresCog(commands.Cog):
         date="Date of the event (YYYY-MM-DD format)"
     )
     @app_commands.choices(event_type=[
-        Choice(name="All events", value="all"),
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def delete_event(self, interaction: discord.Interaction, event_type: str, date: str):
         if not any(r.id in (config.COLEAD,) for r in interaction.user.roles):
@@ -493,8 +492,8 @@ class ScoresCog(commands.Cog):
     )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def delete_player(self, interaction: discord.Interaction,
                              player: str, event_type: str = "all", date: str = ""):
@@ -575,8 +574,8 @@ class ScoresCog(commands.Cog):
         player="Player's name"
     )
     @app_commands.choices(event_type=[
-        Choice(name="<:Pvp_ticket:1487193877990478067> Smash", value="smash"),
-        Choice(name="<:mecha_icon:1488150151519535144> Mechs", value="mechs"),
+        Choice(name="Smash only", value="smash"),
+        Choice(name="Mechs only", value="mechs"),
     ])
     async def delete_score(self, interaction: discord.Interaction,
                             event_type: str, date: str, player: str):
