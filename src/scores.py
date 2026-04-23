@@ -15,6 +15,7 @@ from io import BytesIO
 import config
 
 DATA_FILE = "data/scores.json"
+MEMBERS_FILE = "data/members.json"
 
 
 def load_data() -> dict:
@@ -37,6 +38,22 @@ def load_data() -> dict:
             os.replace(DATA_FILE, backup)
         save_data({"events": []})
         return {"events": []}
+    
+def save_members(members: list):
+    os.makedirs("data", exist_ok=True)
+    with open(MEMBERS_FILE, "w", encoding="utf-8") as f:
+        json.dump({"members": sorted(members)}, f, ensure_ascii=False, indent=2)
+    
+def load_members() -> list:
+    if not os.path.exists(MEMBERS_FILE):
+        save_members([])
+        return []
+    try:
+        with open(MEMBERS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("members", [])
+    except:
+        return []
 
 def save_data(data: dict):
     """Sauvegarde les données directement dans le fichier JSON (in-place)."""
@@ -110,7 +127,7 @@ def chart_club_evolution(data: dict, event_type: str | None = None) -> BytesIO:
     ax.set_xticklabels([f"{e['date']}\n{TYPE_LABEL[e['type']]}" for e in events],
                        fontsize=8, color=COLORS["text"])
     ax.set_ylabel("Total score", color=COLORS["text"])
-    title = f"<:faction:1488292952618045440> Changes in the club's total score"
+    title = f"Changes in the club's total score"
     if event_type:
         title += f"  —  {TYPE_LABEL[event_type]}"
     ax.set_title(title, fontsize=13, fontweight="bold", color=COLORS["text"], pad=12)
@@ -165,50 +182,52 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
 
     return _buf(fig)
 
-def chart_average_per_player(data: dict, event_type: str | None = None) -> BytesIO:
+def chart_average_per_player(data: dict, player: str, event_type: str | None = None) -> BytesIO:
+    # --- FILTRE : Vérification que le joueur est dans le club ---
+    current_members = load_members()
+    if player not in current_members:
+        raise ValueError(f"**{player}** n'est pas dans la liste des membres actuels du club.")
+    # ------------------------------------------------------------
+
     events = data["events"]
     if event_type:
         events = [e for e in events if e["type"] == event_type]
+    events = sorted(events, key=lambda e: e["date"])
 
-    if not events:
-        label = f" of type **{TYPE_LABEL[event_type]}**" if event_type else ""
-        raise ValueError(f"No event found{label}. Create one first with `/add_event`.")
-
-    player_scores: dict[str, list] = {}
+    dates, scores = [], []
     for e in events:
-        for player, score in e["scores"].items():
-            player_scores.setdefault(player, []).append(score)
+        if player in e["scores"]:
+            dates.append(f"{e['date']}\n{TYPE_LABEL[e['type']]}")
+            scores.append(e["scores"][player])
 
-    if not player_scores:
-        label = f" for **{TYPE_LABEL[event_type]}**" if event_type else ""
-        raise ValueError(f"No scores registered yet{label}. Add scores with `/add_scores`.")
+    if not scores:
+        raise ValueError(f"No score found for **{player}**.")
 
-    averages = {p: np.mean(s) for p, s in player_scores.items()}
-    averages = dict(sorted(averages.items(), key=lambda x: x[1], reverse=True))
+    fig, ax = _setup_dark_fig(11, 5)
+    col = COLORS["smash"] if event_type == "smash" else (COLORS["mechs"] if event_type == "mechs" else COLORS["accent"])
 
-    players = list(averages.keys())
-    values = list(averages.values())
+    ax.fill_between(range(len(dates)), scores, alpha=0.2, color=col)
+    ax.plot(range(len(dates)), scores, color=col, linewidth=2.5, marker="o",
+            markersize=8, markeredgecolor="white", markeredgewidth=0.8, zorder=3)
 
-    fig, ax = _setup_dark_fig(max(10, len(players) * 0.9 + 2), 5)
-
-    bar_colors = [COLORS["accent"]] * len(players)
-    if values:
-        bar_colors[0] = COLORS["smash"]  # top joueur en or
-
-    bars = ax.bar(players, values, color=bar_colors, width=0.6,
-                  edgecolor="white", linewidth=0.4, zorder=2)
-
-    ax.set_ylabel("Average score", color=COLORS["text"])
-    title = "<:top1:1489297584752168990> Average score per player"
+    ax.set_xticks(range(len(dates)))
+    ax.set_xticklabels(dates, fontsize=8, color=COLORS["text"])
+    ax.set_ylabel("Score", color=COLORS["text"])
+    title = f"Changes in the {player} score"
     if event_type:
         title += f"  —  {TYPE_LABEL[event_type]}"
     ax.set_title(title, fontsize=13, fontweight="bold", color=COLORS["text"], pad=12)
-    ax.set_xticks(range(len(players)))
-    ax.set_xticklabels(players, rotation=30, ha="right", fontsize=9, color=COLORS["text"])
 
-    for bar, val in zip(bars, values):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(values) * 0.01,
-                f"{val:,.0f}", ha="center", va="bottom", fontsize=8, color=COLORS["text"])
+    for i, v in enumerate(scores):
+        ax.annotate(f"{v:,}", (i, v), textcoords="offset points", xytext=(0, 8),
+                    ha="center", fontsize=8, color=COLORS["text"])
+
+    # ligne moyenne
+    avg = np.mean(scores)
+    ax.axhline(avg, color="white", linestyle=":", linewidth=1.2, alpha=0.5)
+    ax.annotate(f"moy. {avg:,.0f}", xy=(len(scores) - 1, avg),
+                xytext=(-40, 5), textcoords="offset points",
+                fontsize=8, color="white", alpha=0.7)
 
     return _buf(fig)
 
@@ -373,7 +392,52 @@ class ScoresCog(commands.Cog):
         embed.set_footer(text=f"By {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="scores_club", description="Chart: Change in the club’s total score")
+    @app_commands.command(name="clear_scores", description="Deletes **ALL** saved events and scores")
+    async def clear_scores(self, interaction: discord.Interaction):
+        if not any(r.id == config.COLEAD for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
+            return
+        save_data({"events": []})
+        await interaction.response.send_message("<:notif:1496819951296839811> **The scores database has been reset.** All events have been deleted.")
+
+
+    @app_commands.command(name="member_add", description="Add a member into the club")
+    async def member_add(self, interaction: discord.Interaction, nom: str):
+        if not any(r.id == config.COLEAD for r in interaction.user.roles):
+            await interaction.response.send_message("❌ You don't have the permissions to do that", ephemeral=True)
+            return
+        members = load_members()
+        if nom in members:
+            await interaction.response.send_message(f"⚠️ {nom} is already in the club.")
+            return
+        members.append(nom)
+        save_members(members)
+        await interaction.response.send_message(f"✅ **{nom}** has been added to the club's membership.")
+
+    @app_commands.command(name="member_remove", description="Remove a player from the members' list")
+    async def member_remove(self, interaction: discord.Interaction, nom: str):
+        if not any(r.id == config.COLEAD for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
+            return
+        members = load_members()
+        if nom not in members:
+            await interaction.response.send_message(f"❌ {nom} is not on the list.")
+            return
+        members.remove(nom)
+        save_members(members)
+        await interaction.response.send_message(f"<a:nyx:1489283483376292004> **{nom}** has been expelled from the club.")
+
+    @app_commands.command(name="member_list", description="Displays the list of current members")
+    async def member_list(self, interaction: discord.Interaction):
+        members = load_members()
+        if not members:
+            await interaction.response.send_message("The list is empty.")
+            return
+        await interaction.response.send_message(f"<:players:1496861469583867987> **Club members ({len(members)}) :**\n" + ", ".join(members))
+
+
+
+    @app_commands.command(name="scores_club", description="Chart: Change in the club's total score")
     @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
@@ -479,7 +543,7 @@ class ScoresCog(commands.Cog):
             desc = e.get("description", "") or "—"
             embed.add_field(
                 name=f"{TYPE_LABEL[e['type']]}  —  {e['date']}",
-                value=f"<:faction:1488292952618045440> {nb_joueurs} players  •  <:top1:1489297584752168990> Total : {total:,}\n📝 {desc}",
+                value=f"{nb_joueurs} players  •  Total : {total:,}\n📝 {desc}",
                 inline=False
             )
         if len(data["events"]) > 15:
@@ -620,7 +684,7 @@ class ScoresCog(commands.Cog):
                 except Exception:
                     pass
 
-            @discord.ui.button(label="<:announcement:1496817320440500335> Confirm", style=discord.ButtonStyle.danger)
+            @discord.ui.button(label="Confirm", style=discord.ButtonStyle.danger)
             async def confirm(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
                 if btn_interaction.user.id != interaction.user.id:
                     await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
