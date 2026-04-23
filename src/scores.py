@@ -39,12 +39,10 @@ def load_data() -> dict:
         return {"events": []}
 
 def save_data(data: dict):
-    """Sauvegarde les données dans le fichier JSON (écriture atomique)."""
+    """Sauvegarde les données directement dans le fichier JSON (in-place)."""
     os.makedirs("data", exist_ok=True)
-    tmp = DATA_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, DATA_FILE)  # atomique : jamais de fichier à moitié écrit
 
 def find_event(data: dict, event_type: str, date_str: str) -> dict | None:
     """Trouve un événement par type et date."""
