@@ -182,52 +182,52 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
 
     return _buf(fig)
 
-def chart_average_per_player(data: dict, player: str, event_type: str | None = None) -> BytesIO:
-    # --- FILTRE : Vérification que le joueur est dans le club ---
-    current_members = load_members()
-    if player not in current_members:
-        raise ValueError(f"**{player}** n'est pas dans la liste des membres actuels du club.")
-    # ------------------------------------------------------------
-
+def chart_average_per_player(data: dict, event_type: str | None = None) -> BytesIO:
     events = data["events"]
     if event_type:
         events = [e for e in events if e["type"] == event_type]
-    events = sorted(events, key=lambda e: e["date"])
 
-    dates, scores = [], []
+    if not events:
+        label = f" of type **{TYPE_LABEL[event_type]}**" if event_type else ""
+        raise ValueError(f"No event found{label}. Create one first with `/add_event`.")
+
+    player_scores: dict[str, list] = {}
+    members = load_members()
     for e in events:
-        if player in e["scores"]:
-            dates.append(f"{e['date']}\n{TYPE_LABEL[e['type']]}")
-            scores.append(e["scores"][player])
+        for player, score in e["scores"].items():
+            if player in members:
+                player_scores.setdefault(player, []).append(score)
 
-    if not scores:
-        raise ValueError(f"No score found for **{player}**.")
+    if not player_scores:
+        label = f" for **{TYPE_LABEL[event_type]}**" if event_type else ""
+        raise ValueError(f"No scores registered yet{label}. Add scores with `/add_scores`.")
 
-    fig, ax = _setup_dark_fig(11, 5)
-    col = COLORS["smash"] if event_type == "smash" else (COLORS["mechs"] if event_type == "mechs" else COLORS["accent"])
+    averages = {p: np.mean(s) for p, s in player_scores.items()}
+    averages = dict(sorted(averages.items(), key=lambda x: x[1], reverse=True))
 
-    ax.fill_between(range(len(dates)), scores, alpha=0.2, color=col)
-    ax.plot(range(len(dates)), scores, color=col, linewidth=2.5, marker="o",
-            markersize=8, markeredgecolor="white", markeredgewidth=0.8, zorder=3)
+    players = list(averages.keys())
+    values = list(averages.values())
 
-    ax.set_xticks(range(len(dates)))
-    ax.set_xticklabels(dates, fontsize=8, color=COLORS["text"])
-    ax.set_ylabel("Score", color=COLORS["text"])
-    title = f"Changes in the {player} score"
+    fig, ax = _setup_dark_fig(max(10, len(players) * 0.9 + 2), 5)
+
+    bar_colors = [COLORS["accent"]] * len(players)
+    if values:
+        bar_colors[0] = COLORS["smash"]  # top joueur en or
+
+    bars = ax.bar(players, values, color=bar_colors, width=0.6,
+                  edgecolor="white", linewidth=0.4, zorder=2)
+
+    ax.set_ylabel("Average score", color=COLORS["text"])
+    title = "Average score per player"
     if event_type:
         title += f"  —  {TYPE_LABEL[event_type]}"
     ax.set_title(title, fontsize=13, fontweight="bold", color=COLORS["text"], pad=12)
+    ax.set_xticks(range(len(players)))
+    ax.set_xticklabels(players, rotation=30, ha="right", fontsize=9, color=COLORS["text"])
 
-    for i, v in enumerate(scores):
-        ax.annotate(f"{v:,}", (i, v), textcoords="offset points", xytext=(0, 8),
-                    ha="center", fontsize=8, color=COLORS["text"])
-
-    # ligne moyenne
-    avg = np.mean(scores)
-    ax.axhline(avg, color="white", linestyle=":", linewidth=1.2, alpha=0.5)
-    ax.annotate(f"moy. {avg:,.0f}", xy=(len(scores) - 1, avg),
-                xytext=(-40, 5), textcoords="offset points",
-                fontsize=8, color="white", alpha=0.7)
+    for bar, val in zip(bars, values):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + max(values) * 0.01,
+                f"{val:,.0f}", ha="center", va="bottom", fontsize=8, color=COLORS["text"])
 
     return _buf(fig)
 
@@ -243,7 +243,7 @@ class ScoresCog(commands.Cog):
         description="Optional description of the event"
     )
     @app_commands.choices(event_type=[
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def add_event(self, interaction: discord.Interaction,
@@ -291,7 +291,7 @@ class ScoresCog(commands.Cog):
         scores="Scores in the format: Player1:score1, Player2:score2, ..."
     )
     @app_commands.choices(event_type=[
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def add_scores(self, interaction: discord.Interaction,
@@ -401,18 +401,40 @@ class ScoresCog(commands.Cog):
         await interaction.response.send_message("<:notif:1496819951296839811> **The scores database has been reset.** All events have been deleted.")
 
 
-    @app_commands.command(name="member_add", description="Add a member into the club")
-    async def member_add(self, interaction: discord.Interaction, nom: str):
+    @app_commands.command(name="member_add", description="Add one or more members to the club — format: Player1, Player2, ...")
+    @app_commands.describe(noms="Member name(s), separated by commas")
+    async def member_add(self, interaction: discord.Interaction, noms: str):
         if not any(r.id == config.COLEAD for r in interaction.user.roles):
             await interaction.response.send_message("❌ You don't have the permissions to do that", ephemeral=True)
             return
+
         members = load_members()
-        if nom in members:
-            await interaction.response.send_message(f"⚠️ {nom} is already in the club.")
-            return
-        members.append(nom)
-        save_members(members)
-        await interaction.response.send_message(f"✅ **{nom}** has been added to the club's membership.")
+        added, already = [], []
+
+        for nom in noms.split(","):
+            nom = nom.strip()
+            if not nom:
+                continue
+            if nom in members:
+                already.append(nom)
+            else:
+                members.append(nom)
+                added.append(nom)
+
+        if added:
+            save_members(members)
+
+        embed = discord.Embed(
+            title="Club membership update",
+            color=discord.Color.green() if added else discord.Color.orange(),
+            timestamp=datetime.datetime.now()
+        )
+        if added:
+            embed.add_field(name=f"✅ Added ({len(added)})", value=", ".join(f"**{n}**" for n in added), inline=False)
+        if already:
+            embed.add_field(name=f"⚠️ Already in the club ({len(already)})", value=", ".join(f"**{n}**" for n in already), inline=False)
+
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="member_remove", description="Remove a player from the members' list")
     async def member_remove(self, interaction: discord.Interaction, nom: str):
@@ -441,7 +463,7 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def scores_club(self, interaction: discord.Interaction, event_type: str = "all"):
@@ -469,7 +491,7 @@ class ScoresCog(commands.Cog):
     )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def scores_player(self, interaction: discord.Interaction,
@@ -495,7 +517,7 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def scores_average(self, interaction: discord.Interaction, event_type: str = "all"):
@@ -519,7 +541,7 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def list_events(self, interaction: discord.Interaction, event_type: str = "all"):
@@ -556,7 +578,7 @@ class ScoresCog(commands.Cog):
         date="Date of the event (YYYY-MM-DD format)"
     )
     @app_commands.choices(event_type=[
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def delete_event(self, interaction: discord.Interaction, event_type: str, date: str):
@@ -641,7 +663,7 @@ class ScoresCog(commands.Cog):
     )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def delete_player(self, interaction: discord.Interaction,
@@ -736,7 +758,7 @@ class ScoresCog(commands.Cog):
         player="Player's name"
     )
     @app_commands.choices(event_type=[
-        Choice(name="Smash only", value="smash"),
+        Choice(name="Smash", value="smash"),
         Choice(name="Mechs only", value="mechs"),
     ])
     async def delete_score(self, interaction: discord.Interaction,
