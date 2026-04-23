@@ -49,7 +49,7 @@ COLORS = {
     "accent":"#818cf8",
 }
 
-TYPE_LABEL = {"smash": "⚔️ Smash", "mechs": "🤖 Mechs"}
+TYPE_LABEL = {"smash": "<:Pvp_ticket:1487193877990478067> Smash", "mechs": "<:mecha_icon:1488150151519535144> Mechs"}
 
 def _setup_dark_fig(w=12, h=6):
     fig, ax = plt.subplots(figsize=(w, h))
@@ -81,7 +81,7 @@ def chart_club_evolution(data: dict, event_type: str | None = None) -> BytesIO:
     events = sorted(events, key=lambda e: e["date"])
 
     if not events:
-        raise ValueError("Aucun événement trouvé pour ce filtre.")
+        raise ValueError("Event not found")
 
     dates = [e["date"] for e in events]
     totals = [sum(e["scores"].values()) for e in events]
@@ -96,8 +96,8 @@ def chart_club_evolution(data: dict, event_type: str | None = None) -> BytesIO:
     ax.set_xticks(range(len(dates)))
     ax.set_xticklabels([f"{e['date']}\n{TYPE_LABEL[e['type']]}" for e in events],
                        fontsize=8, color=COLORS["text"])
-    ax.set_ylabel("Score total", color=COLORS["text"])
-    title = f"📈 Évolution du score total du club"
+    ax.set_ylabel("Total score", color=COLORS["text"])
+    title = f"<:faction:1488292952618045440> Changes in the club's total score"
     if event_type:
         title += f"  —  {TYPE_LABEL[event_type]}"
     ax.set_title(title, fontsize=13, fontweight="bold", color=COLORS["text"], pad=12)
@@ -122,7 +122,7 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
             scores.append(e["scores"][player])
 
     if not scores:
-        raise ValueError(f"Aucun score trouvé pour **{player}**.")
+        raise ValueError(f"No score found for **{player}**.")
 
     fig, ax = _setup_dark_fig(11, 5)
     col = COLORS["smash"] if event_type == "smash" else (COLORS["mechs"] if event_type == "mechs" else COLORS["accent"])
@@ -134,7 +134,7 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
     ax.set_xticks(range(len(dates)))
     ax.set_xticklabels(dates, fontsize=8, color=COLORS["text"])
     ax.set_ylabel("Score", color=COLORS["text"])
-    title = f"🎯 Évolution de {player}"
+    title = f"<a:research:1488144464835776622> Changes in the {player} score"
     if event_type:
         title += f"  —  {TYPE_LABEL[event_type]}"
     ax.set_title(title, fontsize=13, fontweight="bold", color=COLORS["text"], pad=12)
@@ -158,7 +158,7 @@ def chart_average_per_player(data: dict, event_type: str | None = None) -> Bytes
         events = [e for e in events if e["type"] == event_type]
 
     if not events:
-        raise ValueError("Aucun événement trouvé pour ce filtre.")
+        raise ValueError("No event found")
 
     player_scores: dict[str, list] = {}
     for e in events:
@@ -166,7 +166,7 @@ def chart_average_per_player(data: dict, event_type: str | None = None) -> Bytes
             player_scores.setdefault(player, []).append(score)
 
     if not player_scores:
-        raise ValueError("Aucun score enregistré.")
+        raise ValueError("No registered score found")
 
     averages = {p: np.mean(s) for p, s in player_scores.items()}
     averages = dict(sorted(averages.items(), key=lambda x: x[1], reverse=True))
@@ -183,8 +183,8 @@ def chart_average_per_player(data: dict, event_type: str | None = None) -> Bytes
     bars = ax.bar(players, values, color=bar_colors, width=0.6,
                   edgecolor="white", linewidth=0.4, zorder=2)
 
-    ax.set_ylabel("Score moyen", color=COLORS["text"])
-    title = "🏆 Score moyen par joueur"
+    ax.set_ylabel("Average score", color=COLORS["text"])
+    title = "<:top1:1489297584752168990> Average score per player"
     if event_type:
         title += f"  —  {TYPE_LABEL[event_type]}"
     ax.set_title(title, fontsize=13, fontweight="bold", color=COLORS["text"], pad=12)
@@ -202,36 +202,34 @@ class ScoresCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="add_event", description="Ajoute un événement (smash/mechs) avec une date")
+    @app_commands.command(name="add_event", description="Add an event (smash/mechs) with a date")
     @app_commands.describe(
-        event_type="Type d'événement",
-        date="Date de l'événement (format YYYY-MM-DD)",
-        description="Description optionnelle de l'événement"
+        event_type="Type of event",
+        date="Date of the event (YYYY-MM-DD format)",
+        description="Optional description of the event"
     )
     @app_commands.choices(event_type=[
-        Choice(name="⚔️ Smash", value="smash"),
-        Choice(name="🤖 Mechs", value="mechs"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs", value="mechs"),
     ])
     async def add_event(self, interaction: discord.Interaction,
                         event_type: str, date: str, description: str = ""):
 
-        # Vérification rôle
-        if not any(r.id in (config.COLEAD, config.FURYMEMBER) for r in interaction.user.roles):
-            await interaction.response.send_message("❌ Vous n'avez pas la permission.", ephemeral=True)
+        if not any(r.id in (config.COLEAD) for r in interaction.user.roles):
+            await interaction.response.send_message("❌ You don't have the permissions to do that", ephemeral=True)
             return
 
-        # Validation date
         try:
             datetime.datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
             await interaction.response.send_message(
-                "❌ Format de date invalide. Utilisez **YYYY-MM-DD** (ex: 2025-07-18).", ephemeral=True)
+                "❌ Invalid date format. Use **YYYY-MM-DD** (ex: 2025-07-18).", ephemeral=True)
             return
 
         data = load_data()
         if find_event(data, event_type, date):
             await interaction.response.send_message(
-                f"⚠️ Un événement **{TYPE_LABEL[event_type]}** existe déjà pour le **{date}**.", ephemeral=True)
+                f"⚠️ An event **{TYPE_LABEL[event_type]}** already exists for the **{date}**.", ephemeral=True)
             return
 
         data["events"].append({
@@ -243,73 +241,73 @@ class ScoresCog(commands.Cog):
         save_data(data)
 
         embed = discord.Embed(
-            title=f"{TYPE_LABEL[event_type]} — Événement ajouté !",
-            description=f"📅 **Date :** {date}\n📝 **Description :** {description or '—'}",
+            title=f"{TYPE_LABEL[event_type]} — Event added !",
+            description=f"<:calendar:1496816276780224512> **Date :** {date}\n<:usefull:1488294635519479918> **Description :** {description or '—'}",
             color=discord.Color.from_str(COLORS["smash"] if event_type == "smash" else COLORS["mechs"]),
             timestamp=datetime.datetime.now()
         )
-        embed.set_footer(text=f"Ajouté par {interaction.user.display_name}")
+        embed.set_footer(text=f"Added by {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="add_score", description="Ajoute ou met à jour le score d'un membre pour un événement")
+    @app_commands.command(name="add_score", description="Adds or updates a member's score for an event")
     @app_commands.describe(
-        event_type="Type d'événement",
-        date="Date de l'événement (format YYYY-MM-DD)",
-        player="Nom du joueur",
-        score="Score obtenu"
+        event_type="Event type",
+        date="Date of the event (YYYY-MM-DD format)",
+        player="Player's name",
+        score="Score achieved"
     )
     @app_commands.choices(event_type=[
-        Choice(name="⚔️ Smash", value="smash"),
-        Choice(name="🤖 Mechs", value="mechs"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs", value="mechs"),
     ])
     async def add_score(self, interaction: discord.Interaction,
                         event_type: str, date: str, player: str, score: int):
 
         if not any(r.id in (config.COLEAD, config.FURYMEMBER) for r in interaction.user.roles):
-            await interaction.response.send_message("❌ Vous n'avez pas la permission.", ephemeral=True)
+            await interaction.response.send_message("❌ You don't have the permission to do that.", ephemeral=True)
             return
 
         try:
             datetime.datetime.strptime(date, "%Y-%m-%d")
         except ValueError:
             await interaction.response.send_message(
-                "❌ Format de date invalide. Utilisez **YYYY-MM-DD**.", ephemeral=True)
+                "❌ Invalid date format. Use **YYYY-MM-DD**.", ephemeral=True)
             return
 
         data = load_data()
         event = find_event(data, event_type, date)
         if not event:
             await interaction.response.send_message(
-                f"❌ Aucun événement **{TYPE_LABEL[event_type]}** trouvé pour le **{date}**.\n"
-                "Créez-le d'abord avec `/add_event`.", ephemeral=True)
+                f"❌ No events **{TYPE_LABEL[event_type]}** found for the **{date}**.\n"
+                "First, create it using `/add_event`.", ephemeral=True)
             return
 
         old_score = event["scores"].get(player)
         event["scores"][player] = score
         save_data(data)
 
-        action = "mis à jour" if old_score is not None else "ajouté"
-        diff = f" *(ancien : {old_score:,})*" if old_score is not None else ""
+        action = "updated" if old_score is not None else "added"
+        diff = f" *(former : {old_score:,})*" if old_score is not None else ""
         total = sum(event["scores"].values())
 
         embed = discord.Embed(
-            title=f"✅ Score {action} — {TYPE_LABEL[event_type]}",
+            title=f"<:announcement:1496817320440500335> Score {action} — {TYPE_LABEL[event_type]}",
             color=discord.Color.green(),
             timestamp=datetime.datetime.now()
         )
-        embed.add_field(name="👤 Joueur", value=player, inline=True)
-        embed.add_field(name="🎯 Score", value=f"{score:,}{diff}", inline=True)
-        embed.add_field(name="📅 Événement", value=date, inline=True)
-        embed.add_field(name="🏆 Total club", value=f"{total:,}", inline=False)
+        embed.add_field(name="<a:terryx:1489284057920573660> Player", value=player, inline=True)
+        embed.add_field(name="<:optis:1488294635519479918> Score", value=f"{score:,}{diff}", inline=True)
+        embed.add_field(name="<:calendar:1496816276780224512> Event", value=date, inline=True)
+        embed.add_field(name="<:top1:1489297584752168990> Total club", value=f"{total:,}", inline=False)
         embed.set_footer(text=f"Par {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="scores_club", description="Graphique : évolution du score total du club")
-    @app_commands.describe(event_type="Filtrer par type (optionnel)")
+    @app_commands.command(name="scores_club", description="Chart: Change in the club’s total score")
+    @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
-        Choice(name="Tous les événements", value="all"),
-        Choice(name="⚔️ Smash uniquement", value="smash"),
-        Choice(name="🤖 Mechs uniquement", value="mechs"),
+        Choice(name="All events", value="all"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
     ])
     async def scores_club(self, interaction: discord.Interaction, event_type: str = "all"):
         await interaction.response.defer()
@@ -322,22 +320,22 @@ class ScoresCog(commands.Cog):
 
         file = discord.File(buf, filename="scores_club.png")
         embed = discord.Embed(
-            title="📈 Évolution du score total du club",
+            title="<a:research:1488144464835776622> Changes in the club's total score",
             color=discord.Color.blurple()
         )
         embed.set_image(url="attachment://scores_club.png")
         await interaction.followup.send(embed=embed, file=file)
 
     # ── /scores_player ───────────────────────────────────────────────────────
-    @app_commands.command(name="scores_player", description="Graphique : évolution du score d'un joueur")
+    @app_commands.command(name="scores_player", description="Chart: a player's score over time")
     @app_commands.describe(
-        player="Nom du joueur",
-        event_type="Filtrer par type (optionnel)"
+        player="Player's name",
+        event_type="Filter by type (optional)"
     )
     @app_commands.choices(event_type=[
-        Choice(name="Tous les événements", value="all"),
-        Choice(name="⚔️ Smash uniquement", value="smash"),
-        Choice(name="🤖 Mechs uniquement", value="mechs"),
+        Choice(name="All events", value="all"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
     ])
     async def scores_player(self, interaction: discord.Interaction,
                              player: str, event_type: str = "all"):
@@ -351,19 +349,19 @@ class ScoresCog(commands.Cog):
 
         file = discord.File(buf, filename="scores_player.png")
         embed = discord.Embed(
-            title=f"🎯 Évolution de {player}",
+            title=f"<a:research:1488144464835776622> Changes of {player} score",
             color=discord.Color.blurple()
         )
         embed.set_image(url="attachment://scores_player.png")
         await interaction.followup.send(embed=embed, file=file)
 
     # ── /scores_average ──────────────────────────────────────────────────────
-    @app_commands.command(name="scores_average", description="Graphique : score moyen de chaque joueur")
-    @app_commands.describe(event_type="Filtrer par type (optionnel)")
+    @app_commands.command(name="scores_average", description="Chart: average score for each player")
+    @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
-        Choice(name="Tous les événements", value="all"),
-        Choice(name="⚔️ Smash uniquement", value="smash"),
-        Choice(name="🤖 Mechs uniquement", value="mechs"),
+        Choice(name="All events", value="all"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
     ])
     async def scores_average(self, interaction: discord.Interaction, event_type: str = "all"):
         await interaction.response.defer()
@@ -376,19 +374,18 @@ class ScoresCog(commands.Cog):
 
         file = discord.File(buf, filename="scores_average.png")
         embed = discord.Embed(
-            title="🏆 Score moyen par joueur",
+            title="<:top1:1489297584752168990> Average score per player",
             color=discord.Color.gold()
         )
         embed.set_image(url="attachment://scores_average.png")
         await interaction.followup.send(embed=embed, file=file)
 
-    # ── /list_events ─────────────────────────────────────────────────────────
-    @app_commands.command(name="list_events", description="Liste tous les événements enregistrés")
-    @app_commands.describe(event_type="Filtrer par type (optionnel)")
+    @app_commands.command(name="list_events", description="List all recorded events")
+    @app_commands.describe(event_type="Filter by type (optional)")
     @app_commands.choices(event_type=[
-        Choice(name="Tous les événements", value="all"),
-        Choice(name="⚔️ Smash uniquement", value="smash"),
-        Choice(name="🤖 Mechs uniquement", value="mechs"),
+        Choice(name="All events", value="all"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
     ])
     async def list_events(self, interaction: discord.Interaction, event_type: str = "all"):
         data = load_data()
@@ -398,24 +395,219 @@ class ScoresCog(commands.Cog):
         events = sorted(events, key=lambda e: e["date"], reverse=True)
 
         if not events:
-            await interaction.response.send_message("📭 Aucun événement enregistré.", ephemeral=True)
+            await interaction.response.send_message("No events recorded.", ephemeral=True)
             return
 
         embed = discord.Embed(
-            title="📋 Liste des événements",
+            title="<:announcement:1496817320440500335> List of events",
             color=discord.Color.blurple()
         )
-        for e in events[:15]:  # max 15 pour éviter l'overflow de l'embed
+        for e in events[:15]: 
             nb_joueurs = len(e["scores"])
             total = sum(e["scores"].values())
             desc = e.get("description", "") or "—"
             embed.add_field(
                 name=f"{TYPE_LABEL[e['type']]}  —  {e['date']}",
-                value=f"👥 {nb_joueurs} joueur(s)  •  🏆 Total : {total:,}\n📝 {desc}",
+                value=f"<:faction:1488292952618045440> {nb_joueurs} players  •  <:top1:1489297584752168990> Total : {total:,}\n📝 {desc}",
                 inline=False
             )
         if len(data["events"]) > 15:
-            embed.set_footer(text=f"Affichage des 15 derniers événements sur {len(data['events'])} total.")
+            embed.set_footer(text=f"Displaying the last 15 events out of a total of {len(data['events'])}.")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="delete_event", description="Deletes an entire event and all its scores")
+    @app_commands.describe(
+        event_type="Event type",
+        date="Date of the event (YYYY-MM-DD format)"
+    )
+    @app_commands.choices(event_type=[
+        Choice(name="All events", value="all"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+    ])
+    async def delete_event(self, interaction: discord.Interaction, event_type: str, date: str):
+        if not any(r.id in (config.COLEAD,) for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Only co-leads can delete an event.", ephemeral=True)
+            return
+ 
+        data = load_data()
+        event = find_event(data, event_type, date)
+        if not event:
+            await interaction.response.send_message(
+                f"❌ No events **{TYPE_LABEL[event_type]}** found for the **{date}**.", ephemeral=True)
+            return
+ 
+        nb_joueurs = len(event["scores"])
+        total = sum(event["scores"].values())
+
+        class ConfirmView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=30)
+                self.confirmed = False
+ 
+            @discord.ui.button(label="✅ Confirm deletion", style=discord.ButtonStyle.danger)
+            async def confirm(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
+                if btn_interaction.user.id != interaction.user.id:
+                    await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
+                    return
+                self.confirmed = True
+                self.stop()
+                data2 = load_data()
+                data2["events"] = [e for e in data2["events"]
+                                   if not (e["type"] == event_type and e["date"] == date)]
+                save_data(data2)
+                embed_ok = discord.Embed(
+                    title="<:notif:1496819951296839811> Event deleted",
+                    description=f"**{TYPE_LABEL[event_type]}** from **{date}** deleted.\n"
+                                f"<:faction:1488292952618045440> {nb_joueurs} players — <:top1:1489297584752168990> Total was : {total:,}",
+                    color=discord.Color.red(),
+                    timestamp=datetime.datetime.now()
+                )
+                embed_ok.set_footer(text=f"Par {btn_interaction.user.display_name}")
+                await btn_interaction.response.edit_message(embed=embed_ok, view=None)
+ 
+            @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
+            async def cancel(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
+                if btn_interaction.user.id != interaction.user.id:
+                    await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
+                    return
+                self.stop()
+                await btn_interaction.response.edit_message(
+                    content="<:usefull:1488293835137093683> Deletion cancelled.", embed=None, view=None)
+ 
+        embed_confirm = discord.Embed(
+            title="<a:nyx:1489283483376292004> Confirm deletion",
+            description=f"You are about to delete **{TYPE_LABEL[event_type]}** from **{date}**.\n"
+                        f"<:faction:1488292952618045440> {nb_joueurs} joueur(s) — <:top1:1489297584752168990> Total : {total:,}\n\n"
+                        "**This action cannot be undone.**",
+            color=discord.Color.orange()
+        )
+        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=True)
+ 
+    # ── /delete_player ───────────────────────────────────────────────────────
+    @app_commands.command(name="delete_player", description="Supprime un joueur de tous les événements (ou d'un seul)")
+    @app_commands.describe(
+        player="Name of the player to be removed",
+        event_type="Limit to one event type (optional)",
+        date="Limit to a specific date (optional, format YYYY-MM-DD)"
+    )
+    @app_commands.choices(event_type=[
+        Choice(name="All events", value="all"),
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash only", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs only", value="mechs"),
+    ])
+    async def delete_player(self, interaction: discord.Interaction,
+                             player: str, event_type: str = "all", date: str = ""):
+        if not any(r.id in (config.COLEAD,) for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Only co-leads can remove a player.", ephemeral=True)
+            return
+ 
+        data = load_data()
+
+        occurrences = []
+        for e in data["events"]:
+            if player not in e["scores"]:
+                continue
+            if event_type != "all" and e["type"] != event_type:
+                continue
+            if date and e["date"] != date:
+                continue
+            occurrences.append(e)
+ 
+        if not occurrences:
+            await interaction.response.send_message(
+                f"❌ No results found for **{player}** with this filter.", ephemeral=True)
+            return
+ 
+        scope = f"on **{len(occurrences)}** event(s)"
+        if date:
+            scope = f"pour l'événement du **{date}**"
+ 
+        class ConfirmView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=30)
+ 
+            @discord.ui.button(label="<:announcement:1496817320440500335> Confirm", style=discord.ButtonStyle.danger)
+            async def confirm(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
+                if btn_interaction.user.id != interaction.user.id:
+                    await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
+                    return
+                self.stop()
+                data2 = load_data()
+                count = 0
+                for e in data2["events"]:
+                    if player not in e["scores"]:
+                        continue
+                    if event_type != "all" and e["type"] != event_type:
+                        continue
+                    if date and e["date"] != date:
+                        continue
+                    del e["scores"][player]
+                    count += 1
+                save_data(data2)
+                embed_ok = discord.Embed(
+                    title="<:notif:1496819951296839811> Player removed",
+                    description=f"**{player}** taken from **{count}** event(s).",
+                    color=discord.Color.red(),
+                    timestamp=datetime.datetime.now()
+                )
+                embed_ok.set_footer(text=f"By {btn_interaction.user.display_name}")
+                await btn_interaction.response.edit_message(embed=embed_ok, view=None)
+ 
+            @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
+            async def cancel(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
+                if btn_interaction.user.id != interaction.user.id:
+                    await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
+                    return
+                self.stop()
+        embed_confirm = discord.Embed(
+            title="<a:nyx:1489283483376292004> Confirm deletion ?",
+            description=f"Delete **{player}** {scope} ?\n\n**Cette action est irréversible.**",
+            color=discord.Color.orange()
+        )
+        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=True)
+ 
+    # ── /delete_score ────────────────────────────────────────────────────────
+    @app_commands.command(name="delete_score", description="Removes a player's score for a specific event")
+    @app_commands.describe(
+        event_type="Event type",
+        date="Date of the event (YYYY-MM-DD format)",
+        player="Player's name"
+    )
+    @app_commands.choices(event_type=[
+        Choice(name="<:Pvp_ticket:1487193877990478067> Smash", value="smash"),
+        Choice(name="<:mecha_icon:1488150151519535144> Mechs", value="mechs"),
+    ])
+    async def delete_score(self, interaction: discord.Interaction,
+                            event_type: str, date: str, player: str):
+        if not any(r.id in (config.COLEAD, config.FURYMEMBER) for r in interaction.user.roles):
+            await interaction.response.send_message("❌ You don't have the permissions to do that.", ephemeral=True)
+            return
+ 
+        data = load_data()
+        event = find_event(data, event_type, date)
+        if not event:
+            await interaction.response.send_message(
+                f"❌ No events **{TYPE_LABEL[event_type]}** found for **{date}**.", ephemeral=True)
+            return
+ 
+        if player not in event["scores"]:
+            await interaction.response.send_message(
+                f"❌ No scores found for **{player}** in this event.", ephemeral=True)
+            return
+ 
+        old_score = event["scores"].pop(player)
+        save_data(data)
+ 
+        embed = discord.Embed(
+            title="<:notif:1496819951296839811> Score deleted",
+            color=discord.Color.red(),
+            timestamp=datetime.datetime.now()
+        )
+        embed.add_field(name="<:faction:1488292952618045440> Player", value=player, inline=True)
+        embed.add_field(name="<:optis:1488294635519479918> Score deleted", value=f"{old_score:,}", inline=True)
+        embed.add_field(name="<:calendar:1496816276780224512> Event", value=f"{TYPE_LABEL[event_type]} — {date}", inline=False)
+        embed.set_footer(text=f"Par {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
 
