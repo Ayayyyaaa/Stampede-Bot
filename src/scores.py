@@ -255,7 +255,7 @@ class ScoresCog(commands.Cog):
     )
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def add_event(self, interaction: discord.Interaction,
                         event_type: str, date: str, description: str = ""):
@@ -305,7 +305,7 @@ class ScoresCog(commands.Cog):
     )
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def add_scores(self, interaction: discord.Interaction,
                          event_type: str, date: str, scores: str):
@@ -471,7 +471,7 @@ class ScoresCog(commands.Cog):
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def scores_club(self, interaction: discord.Interaction, event_type: str = "all"):
         await interaction.response.defer()
@@ -491,7 +491,7 @@ class ScoresCog(commands.Cog):
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def scores_player(self, interaction: discord.Interaction, player: str, event_type: str = "all"):
         await interaction.response.defer()
@@ -511,7 +511,7 @@ class ScoresCog(commands.Cog):
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def scores_average(self, interaction: discord.Interaction, event_type: str = "all"):
         await interaction.response.defer()
@@ -531,7 +531,7 @@ class ScoresCog(commands.Cog):
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def list_events(self, interaction: discord.Interaction, event_type: str = "all"):
         data = load_data(interaction.guild_id)
@@ -549,7 +549,7 @@ class ScoresCog(commands.Cog):
             desc = e.get("description", "") or "—"
             embed.add_field(
                 name=f"{TYPE_LABEL[e['type']]}  —  {e['date']}",
-                value=f"{nb_joueurs} players  •  Total : {total:,}\n📝 {desc}",
+                value=f"<:faction:1488292952618045440> {nb_joueurs} players  •  <:top1:1489297584752168990> Total : {total:,}\n📝 {desc}",
                 inline=False
             )
         if len(data["events"]) > 15:
@@ -560,7 +560,7 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(event_type="Event type", date="Date of the event (YYYY-MM-DD format)")
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def delete_event(self, interaction: discord.Interaction, event_type: str, date: str):
         gc = await self._check_guild(interaction)
@@ -643,7 +643,7 @@ class ScoresCog(commands.Cog):
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def delete_player(self, interaction: discord.Interaction,
                              player: str, event_type: str = "all", date: str = ""):
@@ -739,7 +739,7 @@ class ScoresCog(commands.Cog):
     )
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
-        Choice(name="Mechs only", value="mechs"),
+        Choice(name="Mechs", value="mechs"),
     ])
     async def delete_score(self, interaction: discord.Interaction,
                             event_type: str, date: str, player: str):
