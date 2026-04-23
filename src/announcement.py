@@ -5,13 +5,13 @@ import datetime
 from zoneinfo import ZoneInfo
 import config
 
-def creer_embed_mech():
+def creer_embed_mech(server_name: str):
     nom_image = "resources/eventmechas.png"
     nom_image2 = "resources/tapforce.png"
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
     embed = discord.Embed(
-        title= "<:mecha_icon:1488150151519535144> Rules of the Mech Event in Stampede Of Fury <:mecha_icon:1488150151519535144>",
+        title=f"<:mecha_icon:1488150151519535144> Rules of the Mech Event in {server_name} <:mecha_icon:1488150151519535144>",
         description=(
             "**1 -** Dont kill mechs 180 <:mech180:1488607738404671648> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
             "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
@@ -22,20 +22,20 @@ def creer_embed_mech():
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="<:optis:1488294635519479918> Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
+    embed.add_field(name="<:optis:1488294635519479918> Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True)
     embed.add_field(name="🎯 Objectives", value="100 pops per person, we can reach the 3000 !", inline=False)
-    embed.set_thumbnail(url=f"attachment://{nom_image2}") 
+    embed.set_thumbnail(url=f"attachment://{nom_image2}")
     embed.set_image(url=f"attachment://{nom_image}")
-    embed.set_footer(text="Stampede Of Fury !")
+    embed.set_footer(text=f"{server_name} !")
     return embed, [FICHIER2, FICHIER]
 
-def creer_embed_smash():
+def creer_embed_smash(server_name: str):
     nom_image = "resources/smashevent.png"
     nom_image2 = "resources/tapforce.png"
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
     embed = discord.Embed(
-        title= "<:mech:1487413876139102358> Rules of the Smash Event in Stampede Of Fury <:mech:1487413876139102358>",
+        title=f"<:mech:1487413876139102358> Rules of the Smash Event in {server_name} <:mech:1487413876139102358>",
         description=(
             "**1 -** Buy tickets at least once a day <:Pvpticket:1487183172134371388>\n"
             "**2 -** Use yours PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166> \n"
@@ -46,11 +46,11 @@ def creer_embed_smash():
         color=discord.Color.gold(),
         timestamp=datetime.datetime.now()
     )
-    embed.add_field(name="<:optis:1488294635519479918> Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True) 
+    embed.add_field(name="<:optis:1488294635519479918> Need optimizations ?", value="<#1341156549858558145> or <#1487546393936662769> for customised optimisation by our moderators\n", inline=True)
     embed.add_field(name="🎯 Objectives", value="Follow the strategy, you can reach the 400 smash point ! <:smashpoint:1487425123718795367>", inline=False)
-    embed.set_thumbnail(url=f"attachment://{nom_image2}") 
+    embed.set_thumbnail(url=f"attachment://{nom_image2}")
     embed.set_image(url=f"attachment://{nom_image}")
-    embed.set_footer(text="Stampede Of Fury !")
+    embed.set_footer(text=f"{server_name} !")
     return embed, [FICHIER2, FICHIER]
 
 class AnnouncementsCog(commands.Cog):
@@ -62,15 +62,19 @@ class AnnouncementsCog(commands.Cog):
     def cog_unload(self):
         self.annonce_vendredi.cancel()
 
+    def _get_server_name(self, interaction: discord.Interaction) -> str:
+        gc = config.GUILDS.get(interaction.guild_id, {})
+        return gc.get("Name", interaction.guild.name)
+
     @app_commands.command(name="rule_mechs", description="Show the rules for mechs events")
     async def rule_mechs(self, interaction: discord.Interaction):
-        embed, fichiers = creer_embed_mech()
+        embed, fichiers = creer_embed_mech(self._get_server_name(interaction))
         embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed, files=fichiers)
 
     @app_commands.command(name="rule_smash", description="Show the rules for smashs events")
     async def rule_smash(self, interaction: discord.Interaction):
-        embed, fichiers = creer_embed_smash()
+        embed, fichiers = creer_embed_smash(self._get_server_name(interaction))
         embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed, files=fichiers)
 
@@ -79,19 +83,21 @@ class AnnouncementsCog(commands.Cog):
         if datetime.datetime.now(ZoneInfo("Europe/Paris")).weekday() != 4:
             return
 
-        # Envoie l'annonce dans chaque serveur configuré
         for guild_id, guild_config in config.GUILDS.items():
             salon = self.bot.get_channel(guild_config["SALON_ANNONCE_ID"])
             if not salon:
                 continue
 
+            guild = self.bot.get_guild(guild_id)
+            server_name = guild_config.get("Name") or (guild.name if guild else "Unknown")
+
             member_role_id = guild_config["MEMBER"]
             message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>"
 
             if self.utiliser_annonce_smash:
-                mon_embed, mes_fichiers = creer_embed_smash()
+                mon_embed, mes_fichiers = creer_embed_smash(server_name)
             else:
-                mon_embed, mes_fichiers = creer_embed_mech()
+                mon_embed, mes_fichiers = creer_embed_mech(server_name)
 
             await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
 
