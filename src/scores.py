@@ -49,7 +49,7 @@ COLORS = {
     "accent":"#818cf8",
 }
 
-TYPE_LABEL = {"smash": "<:Pvp_ticket:1487193877990478067> Smash", "mechs": "<:mecha_icon:1488150151519535144> Mechs"}
+TYPE_LABEL = {"smash": "Smash", "mechs": "Mechs"}
 
 def _setup_dark_fig(w=12, h=6):
     fig, ax = plt.subplots(figsize=(w, h))
