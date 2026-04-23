@@ -580,7 +580,7 @@ class ScoresCog(commands.Cog):
     ])
     async def delete_score(self, interaction: discord.Interaction,
                             event_type: str, date: str, player: str):
-        if not any(r.id in (config.COLEAD, config.FURYMEMBER) for r in interaction.user.roles):
+        if not any(r.id in (config.COLEAD) for r in interaction.user.roles):
             await interaction.response.send_message("❌ You don't have the permissions to do that.", ephemeral=True)
             return
  
