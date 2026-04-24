@@ -777,5 +777,129 @@ class ScoresCog(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
 
+    @app_commands.command(name="rename", description="Rename a player across all events and the member list")
+    @app_commands.describe(
+        old_name="Current name of the player",
+        new_name="New name to give to the player"
+    )
+    async def rename(self, interaction: discord.Interaction, old_name: str, new_name: str):
+        gc = await self._check_guild(interaction)
+        if not gc:
+            return
+        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Only co-leads can rename a player.", ephemeral=True)
+            return
+
+        old_name = old_name.strip()
+        new_name = new_name.strip()
+
+        if not old_name or not new_name:
+            await interaction.response.send_message("❌ Names cannot be empty.", ephemeral=True)
+            return
+
+        if old_name == new_name:
+            await interaction.response.send_message("❌ Old and new names are identical.", ephemeral=True)
+            return
+
+        data = load_data(interaction.guild_id)
+        guild_id = interaction.guild_id
+
+        # Count occurrences in events
+        events_affected = [e for e in data["events"] if old_name in e["scores"]]
+        if not events_affected:
+            await interaction.response.send_message(
+                f"❌ No scores found for **{old_name}**.", ephemeral=True)
+            return
+
+        # Check if new_name already exists (collision risk)
+        collision_events = [e for e in events_affected if new_name in e["scores"]]
+
+        members = load_members(guild_id)
+        in_member_list = old_name in members
+
+        summary = (
+            f"Rename **{old_name}** → **{new_name}**\n"
+            f"<:faction:1488292952618045440> **{len(events_affected)}** event(s) affected\n"
+        )
+        if in_member_list:
+            summary += "<:usefull:1488293835137093683> Also updated in the member list\n"
+        if collision_events:
+            summary += (
+                f"\n⚠️ **{new_name}** already has a score in **{len(collision_events)}** event(s). "
+                "Scores will be **merged** (old score replaces existing one).\n"
+            )
+        summary += "\n**This action cannot be undone.**"
+
+        class ConfirmView(discord.ui.View):
+            def __init__(self):
+                super().__init__(timeout=60)
+                self.confirmed = False
+
+            async def on_timeout(self):
+                for item in self.children:
+                    item.disabled = True
+                try:
+                    await interaction.edit_original_response(content="⏱️ Confirmation timed out.", embed=None, view=None)
+                except Exception:
+                    pass
+
+            @discord.ui.button(label="✅ Confirm", style=discord.ButtonStyle.success)
+            async def confirm(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
+                if btn_interaction.user.id != interaction.user.id:
+                    await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
+                    return
+                self.confirmed = True
+                self.stop()
+                await btn_interaction.response.defer()
+
+                # Apply rename in events
+                data2 = load_data(guild_id)
+                count = 0
+                for e in data2["events"]:
+                    if old_name in e["scores"]:
+                        e["scores"][new_name] = e["scores"].pop(old_name)
+                        count += 1
+                save_data(guild_id, data2)
+
+                # Apply rename in member list
+                members2 = load_members(guild_id)
+                member_updated = False
+                if old_name in members2:
+                    members2.remove(old_name)
+                    if new_name not in members2:
+                        members2.append(new_name)
+                    save_members(guild_id, members2)
+                    member_updated = True
+
+                embed_ok = discord.Embed(
+                    title="<:notif:1496819951296839811> Player renamed",
+                    description=(
+                        f"**{old_name}** → **{new_name}**\n"
+                        f"<:faction:1488292952618045440> Updated in **{count}** event(s)"
+                        + ("\n<:usefull:1488293835137093683> Member list updated" if member_updated else "")
+                    ),
+                    color=discord.Color.green(),
+                    timestamp=datetime.datetime.now()
+                )
+                embed_ok.set_footer(text=f"By {btn_interaction.user.display_name}")
+                await btn_interaction.edit_original_response(embed=embed_ok, view=None)
+
+            @discord.ui.button(label="❌ Cancel", style=discord.ButtonStyle.secondary)
+            async def cancel(self, btn_interaction: discord.Interaction, button: discord.ui.Button):
+                if btn_interaction.user.id != interaction.user.id:
+                    await btn_interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
+                    return
+                self.stop()
+                await btn_interaction.response.defer()
+                await btn_interaction.edit_original_response(content="<:usefull:1488293835137093683> Rename cancelled.", embed=None, view=None)
+
+        embed_confirm = discord.Embed(
+            title="<a:nyx:1489283483376292004> Confirm rename",
+            description=summary,
+            color=discord.Color.orange()
+        )
+        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=True)
+
+
 async def setup(bot):
     await bot.add_cog(ScoresCog(bot))

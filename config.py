@@ -11,6 +11,8 @@ GUILDS = {
         "ROUNDTABLE" : 1386634739296899186,
         "help1" : 1386634739296899184,
         "help2" : 1388626869980758207,
+        "rules" : 1496975331033088130,
+        "advice" : 1388626869980758207,
         "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"]
     },
     1341134017684308080 : {
@@ -21,6 +23,8 @@ GUILDS = {
         "ROUNDTABLE" : 1380579205363929098,
         "help1" : 1341156549858558145,
         "help2" : 1487546393936662769,
+        "rules" : 1468349920237977690,
+        "advices" : 1341156549858558145,
         "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kalindrov", "Kazukaka"]
     }
 }

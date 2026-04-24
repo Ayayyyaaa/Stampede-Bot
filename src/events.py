@@ -35,9 +35,13 @@ class EventsCog(commands.Cog):
         auteur = message.author
         role = guild.get_role(guild_config["MEMBER"])
         
+        club_name = guild_config.get("Name", guild.name)
+        rules_id = guild_config["rules"]
+        advices_id = guild_config.get("advices", guild_config.get("advice"))
+
         embed = discord.Embed(
-            title="<:Raja:1488127825859838103> Welcome in Stampede Of Fury ! <:Raja:1488127825859838103>",
-            description=f"Congratulations **{auteur.display_name}**, you've been accepted by **{react_author.display_name}** !\nYou're now a SoF member !\n",
+            title=f"<:Raja:1488127825859838103> Welcome in {club_name} ! <:Raja:1488127825859838103>",
+            description=f"Congratulations **{auteur.display_name}**, you've been accepted by **{react_author.display_name}** !\nYou're now a {club_name} member !\n",
             color=discord.Color.dark_purple()
         )
         if auteur.avatar:
@@ -45,7 +49,7 @@ class EventsCog(commands.Cog):
 
         embed.add_field(
             name="<a:research:1488144464835776622> Useful channels",
-            value="• Read the rules in <#1468349920237977690>\n• Ask your questions in <#1341156549858558145>\n",
+            value=f"• Read the rules in <#{rules_id}>\n• Ask your questions in <#{advices_id}>\n",
             inline=False
         )
         embed.add_field(
