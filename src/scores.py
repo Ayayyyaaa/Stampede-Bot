@@ -485,7 +485,10 @@ class ScoresCog(commands.Cog):
             field_name = "Members" if len(chunks) == 1 else f"Members ({i * chunk_size + 1}–{i * chunk_size + len(chunk)})"
             embed.add_field(name=field_name, value=value, inline=True)
 
-        embed.set_footer(text=f"<:players:1496861469583867987> Requested by {interaction.user.display_name}")
+        embed.set_footer(
+            text=f"Requested by {interaction.user.display_name}",
+            icon_url="https://cdn.discordapp.com/emojis/1496861469583867987.png"
+        )
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="scores_club", description="Chart: Change in the club's total score")
