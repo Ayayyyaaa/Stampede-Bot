@@ -282,7 +282,7 @@ class ScoresCog(commands.Cog):
         data = load_data(interaction.guild_id)
         if find_event(data, event_type, date):
             await interaction.response.send_message(
-                f"⚠️ An event **{TYPE_LABEL[event_type]}** already exists for the **{date}**.", ephemeral=True)
+                f"⚠️ An event **{TYPE_LABEL[event_type]}** already exists for the **{date}**.", ephemeral=False)
             return
 
         data["events"].append({
@@ -469,7 +469,7 @@ class ScoresCog(commands.Cog):
         members = load_members(interaction.guild_id)
         if not members:
             await interaction.response.send_message(
-                "❌ The member list is empty.", ephemeral=True)
+                "❌ The member list is empty.", ephemeral=False)
             return
         chunk_size = 15
         chunks = [members[i:i + chunk_size] for i in range(0, len(members), chunk_size)]
@@ -507,7 +507,7 @@ class ScoresCog(commands.Cog):
             await interaction.followup.send(f"❌ {e}", ephemeral=True)
             return
         file = discord.File(buf, filename="scores_club.png")
-        embed = discord.Embed(title="<:increase:1496861484569989251> Changes in the club's total score", color=discord.Color.blurple())
+        embed = discord.Embed(title="<:increase:1496861484569989251>  Changes in the club's total score", color=discord.Color.blurple())
         embed.set_image(url="attachment://scores_club.png")
         await interaction.followup.send(embed=embed, file=file)
 
@@ -527,7 +527,7 @@ class ScoresCog(commands.Cog):
             await interaction.followup.send(f"❌ {e}", ephemeral=True)
             return
         file = discord.File(buf, filename="scores_player.png")
-        embed = discord.Embed(title=f"<a:increase:1496861484569989251> Changes of {player} score", color=discord.Color.blurple())
+        embed = discord.Embed(title=f"<:increase:1496861484569989251>  Changes of {player} score", color=discord.Color.blurple())
         embed.set_image(url="attachment://scores_player.png")
         await interaction.followup.send(embed=embed, file=file)
 
@@ -565,7 +565,7 @@ class ScoresCog(commands.Cog):
             events = [e for e in events if e["type"] == event_type]
         events = sorted(events, key=lambda e: e["date"], reverse=True)
         if not events:
-            await interaction.response.send_message("No events recorded.", ephemeral=True)
+            await interaction.response.send_message("No events recorded.", ephemeral=False)
             return
         embed = discord.Embed(title="<:announcement:1496817320440500335> List of events", color=discord.Color.blurple())
         for e in events[:15]:
@@ -657,7 +657,7 @@ class ScoresCog(commands.Cog):
                         "**This action cannot be undone.**",
             color=discord.Color.orange()
         )
-        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=True)
+        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=False)
 
     @app_commands.command(name="delete_player", description="Removes a player from all events (or a specific one)")
     @app_commands.describe(
@@ -754,7 +754,7 @@ class ScoresCog(commands.Cog):
             description=f"Delete **{player}** {scope} ?\n\n**This action is irreversible.**",
             color=discord.Color.orange()
         )
-        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=True)
+        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=False)
 
     @app_commands.command(name="delete_score", description="Removes a player's score for a specific event")
     @app_commands.describe(
@@ -923,7 +923,7 @@ class ScoresCog(commands.Cog):
             description=summary,
             color=discord.Color.orange()
         )
-        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=True)
+        await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=False)
 
 
 async def setup(bot):
