@@ -51,6 +51,7 @@ def save_data(guild_id: int, data: dict):
 # ── Données membres ───────────────────────────────────────────────────────────
 
 def load_members(guild_id: int) -> list:
+    """Returns a list of member dicts: {"name": str, "discord_id": int | None}"""
     path = _members_file(guild_id)
     if not os.path.exists(path):
         save_members(guild_id, [])
@@ -58,15 +59,45 @@ def load_members(guild_id: int) -> list:
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get("members", [])
+        raw = data.get("members", [])
+        # Migration: old format was a list of strings
+        migrated = []
+        for entry in raw:
+            if isinstance(entry, str):
+                migrated.append({"name": entry, "discord_id": None})
+            else:
+                migrated.append(entry)
+        return migrated
     except:
         return []
 
 def save_members(guild_id: int, members: list):
+    """Saves a list of member dicts sorted by name."""
     path = _members_file(guild_id)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    sorted_members = sorted(members, key=lambda m: m["name"].lower())
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"members": sorted(members)}, f, ensure_ascii=False, indent=2)
+        json.dump({"members": sorted_members}, f, ensure_ascii=False, indent=2)
+
+def get_member_names(guild_id: int) -> list[str]:
+    """Helper: returns just the name strings (for backward-compatible lookups)."""
+    return [m["name"] for m in load_members(guild_id)]
+
+def find_member(members: list, name: str) -> dict | None:
+    """Find a member dict by name (case-sensitive)."""
+    for m in members:
+        if m["name"] == name:
+            return m
+    return None
+
+def add_member_if_absent(guild_id: int, name: str, discord_id: int | None = None) -> bool:
+    """Add a member if not already present. Returns True if actually added."""
+    members = load_members(guild_id)
+    if find_member(members, name):
+        return False
+    members.append({"name": name, "discord_id": discord_id})
+    save_members(guild_id, members)
+    return True
 
 
 # ── Utilitaires ───────────────────────────────────────────────────────────────
@@ -203,11 +234,11 @@ def chart_average_per_player(data: dict, guild_id: int, event_type: str | None =
         label = f" of type **{TYPE_LABEL[event_type]}**" if event_type else ""
         raise ValueError(f"No event found{label}. Create one first with `/add_event`.")
 
-    members = load_members(guild_id)
+    member_names = get_member_names(guild_id)
     player_scores: dict[str, list] = {}
     for e in events:
         for player, score in e["scores"].items():
-            if player in members:
+            if player in member_names:
                 player_scores.setdefault(player, []).append(score)
 
     if not player_scores:
@@ -412,8 +443,8 @@ class ScoresCog(commands.Cog):
         await interaction.response.send_message("<:notif:1496819951296839811> **The scores database has been reset.** All events have been deleted.")
 
 
-    @app_commands.command(name="member_add", description="Add one or more members to the club — format: Player1, Player2, ...")
-    @app_commands.describe(noms="Member name(s), separated by commas")
+    @app_commands.command(name="member_add", description="Add members — format: Player1, Player2:discordID, Player3;discordID")
+    @app_commands.describe(noms="Member(s) separated by commas. Optionally link a Discord ID: Name:123456789 or Name;123456789")
     async def member_add(self, interaction: discord.Interaction, noms: str):
         gc = await self._check_guild(interaction)
         if not gc:
@@ -423,18 +454,52 @@ class ScoresCog(commands.Cog):
             return
 
         members = load_members(interaction.guild_id)
-        added, already = [], []
-        for nom in noms.split(","):
-            nom = nom.strip()
-            if not nom:
-                continue
-            if nom in members:
-                already.append(nom)
-            else:
-                members.append(nom)
-                added.append(nom)
+        added, already, errors = [], [], []
 
-        if added:
+        for entry in noms.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+
+            # Parse optional discord ID: "Name:123456789" or "Name;123456789"
+            discord_id = None
+            sep = None
+            if ":" in entry:
+                sep = ":"
+            elif ";" in entry:
+                sep = ";"
+
+            if sep:
+                parts = entry.rsplit(sep, 1)
+                nom = parts[0].strip()
+                raw_id = parts[1].strip()
+                # Strip <@> mention format if pasted as <@123456789>
+                raw_id = raw_id.lstrip("<@").rstrip(">").strip()
+                if raw_id.isdigit():
+                    discord_id = int(raw_id)
+                else:
+                    errors.append(f"`{entry}` — `{raw_id}` is not a valid Discord ID")
+                    continue
+            else:
+                nom = entry
+
+            if not nom:
+                errors.append(f"`{entry}` — empty name")
+                continue
+
+            existing = find_member(members, nom)
+            if existing:
+                # If already exists but we now have an ID, update it
+                if discord_id and existing.get("discord_id") != discord_id:
+                    existing["discord_id"] = discord_id
+                    already.append((nom, discord_id, True))  # True = ID updated
+                else:
+                    already.append((nom, discord_id, False))
+            else:
+                members.append({"name": nom, "discord_id": discord_id})
+                added.append((nom, discord_id))
+
+        if added or any(x[2] for x in already):
             save_members(interaction.guild_id, members)
 
         embed = discord.Embed(
@@ -443,9 +508,20 @@ class ScoresCog(commands.Cog):
             timestamp=datetime.datetime.now()
         )
         if added:
-            embed.add_field(name=f"✅ Added ({len(added)})", value=", ".join(f"**{n}**" for n in added), inline=False)
+            lines = []
+            for nom, did in added:
+                lines.append(f"**{nom}**" + (f" → <@{did}>" if did else ""))
+            embed.add_field(name=f"✅ Added ({len(added)})", value="\n".join(lines), inline=False)
         if already:
-            embed.add_field(name=f"⚠️ Already in the club ({len(already)})", value=", ".join(f"**{n}**" for n in already), inline=False)
+            updated_links = [(n, did) for n, did, upd in already if upd]
+            just_already = [n for n, did, upd in already if not upd]
+            if updated_links:
+                lines = [f"**{n}** → Discord updated to <@{did}>" for n, did in updated_links]
+                embed.add_field(name=f"<:usefull:1488293835137093683> Discord link updated ({len(updated_links)})", value="\n".join(lines), inline=False)
+            if just_already:
+                embed.add_field(name=f"⚠️ Already in the club ({len(just_already)})", value=", ".join(f"**{n}**" for n in just_already), inline=False)
+        if errors:
+            embed.add_field(name=f"❌ Errors ({len(errors)})", value="\n".join(errors), inline=False)
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="member_remove", description="Remove a player from the members' list")
@@ -457,12 +533,66 @@ class ScoresCog(commands.Cog):
             await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
             return
         members = load_members(interaction.guild_id)
-        if nom not in members:
+        member = find_member(members, nom)
+        if not member:
             await interaction.response.send_message(f"❌ {nom} is not on the list.")
             return
-        members.remove(nom)
+        members.remove(member)
         save_members(interaction.guild_id, members)
         await interaction.response.send_message(f"<a:nyx:1489283483376292004> **{nom}** has been expelled from the club.")
+
+    @app_commands.command(name="member_link", description="Link (or unlink) a Discord account to a player name")
+    @app_commands.describe(
+        nom="Player name in the club",
+        membre="Discord member to link (leave empty to unlink)"
+    )
+    async def member_link(self, interaction: discord.Interaction,
+                          nom: str,
+                          membre: discord.Member | None = None):
+        gc = await self._check_guild(interaction)
+        if not gc:
+            return
+        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
+            return
+
+        members = load_members(interaction.guild_id)
+        m = find_member(members, nom)
+        if not m:
+            await interaction.response.send_message(
+                f"❌ **{nom}** is not in the member list. Add them first with `/member_add`.",
+                ephemeral=True)
+            return
+
+        if membre is None:
+            # Unlink
+            old_id = m.get("discord_id")
+            if not old_id:
+                await interaction.response.send_message(
+                    f"⚠️ **{nom}** has no Discord account linked.", ephemeral=True)
+                return
+            m["discord_id"] = None
+            save_members(interaction.guild_id, members)
+            embed = discord.Embed(
+                title="<:notif:1496819951296839811> Discord account unlinked",
+                description=f"**{nom}** is no longer linked to <@{old_id}>.",
+                color=discord.Color.orange(),
+                timestamp=datetime.datetime.now()
+            )
+        else:
+            m["discord_id"] = membre.id
+            save_members(interaction.guild_id, members)
+            embed = discord.Embed(
+                title="<:usefull:1488293835137093683> Discord account linked",
+                description=f"**{nom}** is now linked to {membre.mention}.",
+                color=discord.Color.green(),
+                timestamp=datetime.datetime.now()
+            )
+            if membre.avatar:
+                embed.set_thumbnail(url=membre.avatar.url)
+
+        embed.set_footer(text=f"By {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="member_list", description="Displays the list of current members")
     async def member_list(self, interaction: discord.Interaction):
@@ -481,7 +611,12 @@ class ScoresCog(commands.Cog):
         )
 
         for i, chunk in enumerate(chunks):
-            value = "\n".join(f"`{members.index(m) + 1}`  {m}" for m in chunk)
+            lines = []
+            for j, m in enumerate(chunk):
+                idx = i * chunk_size + j + 1
+                discord_tag = f"  <@{m['discord_id']}>" if m.get("discord_id") else ""
+                lines.append(f"`{idx}`  {m['name']}{discord_tag}")
+            value = "\n".join(lines)
             field_name = "Members" if len(chunks) == 1 else f"Members ({i * chunk_size + 1}–{i * chunk_size + len(chunk)})"
             embed.add_field(name=field_name, value=value, inline=True)
 
@@ -840,7 +975,7 @@ class ScoresCog(commands.Cog):
         collision_events = [e for e in events_affected if new_name in e["scores"]]
 
         members = load_members(guild_id)
-        in_member_list = old_name in members
+        in_member_list = find_member(members, old_name) is not None
 
         summary = (
             f"Rename **{old_name}** → **{new_name}**\n"
@@ -889,10 +1024,9 @@ class ScoresCog(commands.Cog):
                 # Apply rename in member list
                 members2 = load_members(guild_id)
                 member_updated = False
-                if old_name in members2:
-                    members2.remove(old_name)
-                    if new_name not in members2:
-                        members2.append(new_name)
+                existing = find_member(members2, old_name)
+                if existing:
+                    existing["name"] = new_name
                     save_members(guild_id, members2)
                     member_updated = True
 

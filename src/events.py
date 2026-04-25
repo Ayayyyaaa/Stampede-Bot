@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import re
 import asyncio
 import config
+from src.scores import add_member_if_absent
 
 class EventsCog(commands.Cog):
     def __init__(self, bot):
@@ -71,6 +72,35 @@ class EventsCog(commands.Cog):
                 await auteur.add_roles(role)
             except discord.HTTPException as e:
                 print(f"Erreur discord : {e}")
+
+        # Auto-add to club member list (uses display_name as in-game name, links Discord account)
+        was_added = add_member_if_absent(
+            guild_id=payload.guild_id,
+            name=auteur.display_name,
+            discord_id=auteur.id
+        )
+        if was_added:
+            try:
+                log_channel_id = guild_config.get("SALON_LOG_ID")
+                if log_channel_id:
+                    log_channel = self.bot.get_channel(log_channel_id)
+                    if log_channel:
+                        embed_log = discord.Embed(
+                            title="<:usefull:1488293835137093683> Member auto-added",
+                            description=(
+                                f"**{auteur.display_name}** has been automatically added to the member list.\n"
+                                f"Discord: {auteur.mention}\n"
+                                f"Accepted by: {react_author.mention}\n\n"
+                                f"You can link a different in-game name with `/member_link`."
+                            ),
+                            color=discord.Color.blurple(),
+                            timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
+                        )
+                        if auteur.avatar:
+                            embed_log.set_thumbnail(url=auteur.avatar.url)
+                        await log_channel.send(embed=embed_log)
+            except Exception as e:
+                print(f"Auto-add log error: {e}")
 
     @commands.Cog.listener()
     async def on_message(self, message):
