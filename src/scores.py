@@ -94,7 +94,7 @@ COLORS = {
     "accent":"#818cf8",
 }
 
-TYPE_LABEL = {"smash": "Smash", "mechs": "Mechs"}
+TYPE_LABEL = {"smash": "Smash", "mechs": "Mechs", "all": "All events"}
 
 def _setup_dark_fig(w=12, h=6):
     fig, ax = plt.subplots(figsize=(w, h))
@@ -120,6 +120,8 @@ def _buf(fig) -> BytesIO:
 
 
 def chart_club_evolution(data: dict, event_type: str | None = None) -> BytesIO:
+    if event_type == "all":
+        event_type = None
     events = data["events"]
     if event_type:
         events = [e for e in events if e["type"] == event_type]
@@ -151,6 +153,8 @@ def chart_club_evolution(data: dict, event_type: str | None = None) -> BytesIO:
 
 
 def chart_player_evolution(data: dict, player: str, event_type: str | None = None) -> BytesIO:
+    if event_type == "all":
+        event_type = None
     events = data["events"]
     if event_type:
         events = [e for e in events if e["type"] == event_type]
@@ -189,6 +193,8 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
 
 
 def chart_average_per_player(data: dict, guild_id: int, event_type: str | None = None) -> BytesIO:
+    if event_type == "all":
+        event_type = None
     events = data["events"]
     if event_type:
         events = [e for e in events if e["type"] == event_type]
@@ -462,9 +468,25 @@ class ScoresCog(commands.Cog):
     async def member_list(self, interaction: discord.Interaction):
         members = load_members(interaction.guild_id)
         if not members:
-            await interaction.response.send_message("The list is empty.")
+            await interaction.response.send_message(
+                "❌ The member list is empty.", ephemeral=True)
             return
-        await interaction.response.send_message(f"<:players:1496861469583867987> **Club members ({len(members)}) :**\n" + ", ".join(members))
+        chunk_size = 15
+        chunks = [members[i:i + chunk_size] for i in range(0, len(members), chunk_size)]
+
+        embed = discord.Embed(
+            title=f"<:players:1496861469583867987> Club members — {len(members)}",
+            color=discord.Color.dark_purple(),
+            timestamp=datetime.datetime.now()
+        )
+
+        for i, chunk in enumerate(chunks):
+            value = "\n".join(f"`{members.index(m) + 1}.` {m}" for m in chunk)
+            field_name = "Members" if len(chunks) == 1 else f"Members ({i * chunk_size + 1}–{i * chunk_size + len(chunk)})"
+            embed.add_field(name=field_name, value=value, inline=True)
+
+        embed.set_footer(text=f"<:players:1496861469583867987> Requested by {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="scores_club", description="Chart: Change in the club's total score")
     @app_commands.describe(event_type="Filter by type (optional)")
@@ -482,7 +504,7 @@ class ScoresCog(commands.Cog):
             await interaction.followup.send(f"❌ {e}", ephemeral=True)
             return
         file = discord.File(buf, filename="scores_club.png")
-        embed = discord.Embed(title="<a:research:1488144464835776622> Changes in the club's total score", color=discord.Color.blurple())
+        embed = discord.Embed(title="<:increase:1496861484569989251> Changes in the club's total score", color=discord.Color.blurple())
         embed.set_image(url="attachment://scores_club.png")
         await interaction.followup.send(embed=embed, file=file)
 
@@ -502,7 +524,7 @@ class ScoresCog(commands.Cog):
             await interaction.followup.send(f"❌ {e}", ephemeral=True)
             return
         file = discord.File(buf, filename="scores_player.png")
-        embed = discord.Embed(title=f"<a:research:1488144464835776622> Changes of {player} score", color=discord.Color.blurple())
+        embed = discord.Embed(title=f"<a:increase:1496861484569989251> Changes of {player} score", color=discord.Color.blurple())
         embed.set_image(url="attachment://scores_player.png")
         await interaction.followup.send(embed=embed, file=file)
 
@@ -825,7 +847,7 @@ class ScoresCog(commands.Cog):
             summary += "<:usefull:1488293835137093683> Also updated in the member list\n"
         if collision_events:
             summary += (
-                f"\n⚠️ **{new_name}** already has a score in **{len(collision_events)}** event(s). "
+                f"\n<:notif:1496819951296839811> **{new_name}** already has a score in **{len(collision_events)}** event(s). "
                 "Scores will be **merged** (old score replaces existing one).\n"
             )
         summary += "\n**This action cannot be undone.**"
