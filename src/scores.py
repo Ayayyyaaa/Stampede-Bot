@@ -481,7 +481,7 @@ class ScoresCog(commands.Cog):
         )
 
         for i, chunk in enumerate(chunks):
-            value = "\n".join(f"`{members.index(m) + 1}.` {m}" for m in chunk)
+            value = "\n".join(f"`{members.index(m) + 1}`  {m}" for m in chunk)
             field_name = "Members" if len(chunks) == 1 else f"Members ({i * chunk_size + 1}–{i * chunk_size + len(chunk)})"
             embed.add_field(name=field_name, value=value, inline=True)
 
