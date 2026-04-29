@@ -49,12 +49,12 @@ def record_attempt(guild_id: int, display_name: str, won: bool):
 # ── Utilitaires ───────────────────────────────────────────────────────────────
 
 WHOIS_DIR = "resources/WhoIs"
+TIMEOUT_SECONDS = 30
 
 def _pick_random_image() -> tuple[str, str] | None:
     """
     Returns (character_name, file_path) picked randomly from WHOIS_DIR.
-    Files must be named like:  CharacterName_something.png  or  CharacterName.png
-    The character name is the part before the first underscore (or dot).
+    Files are named like: toro1.png, baron12.png → name = strip digits + capitalize.
     Returns None if the folder is empty or missing.
     """
     if not os.path.isdir(WHOIS_DIR):
@@ -67,47 +67,104 @@ def _pick_random_image() -> tuple[str, str] | None:
         return None
 
     chosen = random.choice(files)
-    # Derive character name: "Toro1.png" → "Toro", "Raja12.png" → "Raja"
-    name_part = os.path.splitext(chosen)[0]       # strip extension
-    char_name = name_part.rstrip("0123456789").capitalize()  # "toro1" → "Toro"
+    name_part = os.path.splitext(chosen)[0]                          # "toro1"
+    char_name = name_part.rstrip("0123456789").capitalize()          # "Toro"
     return char_name, os.path.join(WHOIS_DIR, chosen)
 
 def _normalize(text: str) -> str:
-    """Lowercase + strip for loose comparison."""
     return text.strip().lower()
 
 
-# ── Vue de réponse ────────────────────────────────────────────────────────────
+# ── Modal de réponse ──────────────────────────────────────────────────────────
+
+class AnswerModal(discord.ui.Modal, title="Who is this character?"):
+    answer = discord.ui.TextInput(
+        label="Character name",
+        placeholder="Type the character's name here...",
+        min_length=1,
+        max_length=50
+    )
+
+    def __init__(self, view: "WhoIsView"):
+        super().__init__()
+        self.whois_view = view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        guess = _normalize(self.answer.value)
+        correct = _normalize(self.whois_view.char_name)
+
+        if self.whois_view.stopped:
+            await interaction.response.send_message(
+                "⏰ Too late, the game already ended!", ephemeral=True
+            )
+            return
+
+        if guess != correct:
+            await interaction.response.send_message(
+                f"❌ **{self.answer.value}** is not the right answer, try again!",
+                ephemeral=True
+            )
+            return
+
+        # Correct!
+        self.whois_view.stopped = True
+        self.whois_view.stop()
+        if self.whois_view.timeout_task:
+            self.whois_view.timeout_task.cancel()
+        self.whois_view.cog._remove_active(self.whois_view.channel_id)
+
+        winner = interaction.user
+        record_attempt(self.whois_view.guild_id, winner.display_name, won=True)
+
+        emoji = config.char_emojis.get(self.whois_view.char_name, "")
+        embed = discord.Embed(
+            title=f"<:announcement:1496817320440500335> {winner.display_name} found it!",
+            description=(
+                f"The answer was **{self.whois_view.char_name}** {emoji}\n\n"
+                f"+1 point for {winner.mention} <:top1:1489297584752168990>"
+            ),
+            color=discord.Color.green(),
+            timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
+        )
+        if winner.avatar:
+            embed.set_thumbnail(url=winner.avatar.url)
+
+        await interaction.response.edit_message(embed=embed, view=None, attachments=[])
+
+
+# ── Vue principale ────────────────────────────────────────────────────────────
 
 class WhoIsView(discord.ui.View):
-    """
-    Collects the first correct answer OR waits until timeout.
-    The actual listening is done via on_message in the cog;
-    this View only provides the Give Up button.
-    """
-    def __init__(self, cog: "WhoIsCog", guild_id: int, char_name: str,
-                 channel_id: int, timeout: float = 30.0):
-        super().__init__(timeout=timeout)
+    def __init__(self, cog: "WhoIsCog", guild_id: int, char_name: str, channel_id: int):
+        super().__init__(timeout=None)   # timeout handled manually via task
         self.cog = cog
         self.guild_id = guild_id
         self.char_name = char_name
         self.channel_id = channel_id
-        self.winner: discord.Member | None = None
         self.stopped = False
+        self.timeout_task: asyncio.Task | None = None
+        self.message: discord.Message | None = None
 
-    async def on_timeout(self):
-        if not self.stopped:
-            self.stopped = True
-            self.cog._remove_active(self.channel_id)
+    @discord.ui.button(label="Answer", style=discord.ButtonStyle.primary, emoji="🔍")
+    async def answer_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.stopped:
+            await interaction.response.send_message("⏰ The game already ended!", ephemeral=True)
+            return
+        await interaction.response.send_modal(AnswerModal(self))
 
-    @discord.ui.button(label="<a:scythe:1489283989255491594> Give Up", style=discord.ButtonStyle.secondary)
+    @discord.ui.button(label="Give Up", style=discord.ButtonStyle.secondary, emoji="🏳️")
     async def give_up(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Only the channel participants can give up (anyone can press it → reveal answer)
+        if self.stopped:
+            await interaction.response.send_message("⏰ The game already ended!", ephemeral=True)
+            return
         self.stopped = True
         self.stop()
+        if self.timeout_task:
+            self.timeout_task.cancel()
         self.cog._remove_active(self.channel_id)
+
         embed = discord.Embed(
-            title="<a:zykan:1489280289027915997> Nobody found it!",
+            title="😔 Nobody found it!",
             description=f"The answer was **{self.char_name}** {config.char_emojis.get(self.char_name, '')}",
             color=discord.Color.red(),
             timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
@@ -120,11 +177,33 @@ class WhoIsView(discord.ui.View):
 class WhoIsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # Maps channel_id → {"char_name": str, "view": WhoIsView, "message": discord.Message}
         self._active: dict[int, dict] = {}
 
     def _remove_active(self, channel_id: int):
         self._active.pop(channel_id, None)
+
+    async def _run_timeout(self, view: WhoIsView, char_name: str):
+        """Waits TIMEOUT_SECONDS then reveals the answer if nobody guessed."""
+        await asyncio.sleep(TIMEOUT_SECONDS)
+        if view.stopped:
+            return
+        view.stopped = True
+        view.stop()
+        self._remove_active(view.channel_id)
+
+        embed = discord.Embed(
+            title="<:notif:1496819951296839811> Time's up!",
+            description=(
+                f"Nobody guessed it!\n"
+                f"The answer was **{char_name}** {config.char_emojis.get(char_name, '')}"
+            ),
+            color=discord.Color.red(),
+            timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
+        )
+        try:
+            await view.message.edit(embed=embed, view=None, attachments=[])
+        except discord.HTTPException:
+            pass
 
     # ── /whois ────────────────────────────────────────────────────────────────
 
@@ -132,7 +211,7 @@ class WhoIsCog(commands.Cog):
     async def whois(self, interaction: discord.Interaction):
         if interaction.channel_id in self._active:
             await interaction.response.send_message(
-                "❌ A WhoIs game is already running in this channel! Answer it first.",
+                "❌ A WhoIs game is already running in this channel! Finish it first.",
                 ephemeral=True
             )
             return
@@ -151,8 +230,8 @@ class WhoIsCog(commands.Cog):
         embed = discord.Embed(
             title="<a:research:1488144464835776622> Who Is This Character?",
             description=(
-                "Type the character's name in the chat to answer!\n"
-                f"<:notif:1496819951296839811> You have **30 seconds**.\n\n"
+                "Click **Answer** and type the character's name!\n"
+                f"<:notif:1496819951296839811> You have **{TIMEOUT_SECONDS} seconds**.\n\n"
                 "*Hint: check the tier list with `/tierlist`*"
             ),
             color=discord.Color.blurple(),
@@ -166,83 +245,22 @@ class WhoIsCog(commands.Cog):
             guild_id=interaction.guild_id,
             char_name=char_name,
             channel_id=interaction.channel_id,
-            timeout=30.0
         )
 
         file = discord.File(file_path, filename=filename)
         await interaction.response.send_message(embed=embed, file=file, view=view)
         msg = await interaction.original_response()
+        view.message = msg
 
         self._active[interaction.channel_id] = {
             "char_name": char_name,
             "view": view,
-            "message": msg,
             "guild_id": interaction.guild_id,
         }
 
-        # Auto-reveal after timeout
-        await asyncio.sleep(30)
-        if interaction.channel_id in self._active:
-            # Nobody answered
-            self._remove_active(interaction.channel_id)
-            view.stopped = True
-            view.stop()
-            timeout_embed = discord.Embed(
-                title="<:notif:1496819951296839811> Time's up!",
-                description=f"Nobody guessed it!\nThe answer was **{char_name}** {config.char_emojis.get(char_name, '')}",
-                color=discord.Color.red(),
-                timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
-            )
-            try:
-                await msg.edit(embed=timeout_embed, view=None, attachments=[])
-            except discord.HTTPException:
-                pass
-
-    # ── Listener on_message ───────────────────────────────────────────────────
-
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
-        if message.author.bot or not message.guild:
-            return
-
-        session = self._active.get(message.channel.id)
-        if session is None:
-            return
-
-        guess = _normalize(message.content)
-        answer = _normalize(session["char_name"])
-
-        # Accept a few typo-tolerance: just lowercase match is enough for now
-        if guess != answer:
-            return
-
-        # Correct answer!
-        view: WhoIsView = session["view"]
-        if view.stopped:
-            return  # race condition guard
-
-        view.stopped = True
-        view.stop()
-        self._remove_active(message.channel.id)
-
-        winner = message.author
-        record_attempt(session["guild_id"], winner.display_name, won=True)
-
-        emoji = config.char_emojis.get(session["char_name"], "")
-        embed = discord.Embed(
-            title=f"<:announcement:1496817320440500335> {winner.display_name} found it!",
-            description=f"The answer was **{session['char_name']}** {emoji}\n\n+1 point for {winner.mention} <:top1:1489297584752168990>",
-            color=discord.Color.green(),
-            timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
-        )
-        if winner.avatar:
-            embed.set_thumbnail(url=winner.avatar.url)
-
-        try:
-            await session["message"].edit(embed=embed, view=None, attachments=[])
-        except discord.HTTPException:
-            pass
-        await message.add_reaction("✅")
+        # Start timeout as a background task (doesn't block the command)
+        task = asyncio.create_task(self._run_timeout(view, char_name))
+        view.timeout_task = task
 
     # ── /whois_ranking ────────────────────────────────────────────────────────
 
@@ -258,7 +276,6 @@ class WhoIsCog(commands.Cog):
             )
             return
 
-        # Sort by wins desc, then win-rate desc
         sorted_players = sorted(
             players.items(),
             key=lambda kv: (kv[1]["wins"], kv[1]["wins"] / max(kv[1]["attempts"], 1)),
