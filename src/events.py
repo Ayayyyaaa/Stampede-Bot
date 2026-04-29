@@ -65,7 +65,7 @@ class EventsCog(commands.Cog):
             inline=False
         )
 
-        await message.channel.send(content=f"Bienvenue {auteur.mention} !", embed=embed)
+        await message.channel.send(content=f"Welcome {auteur.mention} !", embed=embed)
         
         if role:
             try:
@@ -122,14 +122,7 @@ class EventsCog(commands.Cog):
                         await message.reply("Go touch grass 🌱")
             
         contenu_minuscule = message.content.lower()
-        words = {
-            'aya' : ['✨'], 
-            'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 
-            'steel' : ['👑'], 
-            'kazu' : ['🤮', '🇧', '🇦', '🇳'],
-            'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 
-            'drip' : ['👴']
-        }
+        words = guild_config["words"] if guild_config else {}
         for mot, liste in words.items():
             if mot in contenu_minuscule:
                 for emoji in liste:
@@ -141,6 +134,8 @@ class EventsCog(commands.Cog):
         contenu_minuscule = contenu_minuscule.replace('-','').replace('/','').replace('_','')
         if re.search(r'\b67\b', contenu_minuscule):
             await message.channel.send('https://klipy.com/gifs/cat-67')
+        if re.search('bayrou', contenu_minuscule):
+            await message.channel.send('https://www.youtube.com/watch?v=ZUFHNzO7ZVo')
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):

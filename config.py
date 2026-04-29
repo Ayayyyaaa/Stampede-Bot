@@ -13,7 +13,17 @@ GUILDS = {
         "help2" : 1388626869980758207,
         "rules" : 1496975331033088130,
         "advice" : 1388626869980758207,
-        "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"]
+        "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"],
+        "words" : {
+            'aya' : ['✨'], 
+            'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 
+            'steel' : ['👑'], 
+            'kazu' : ['🤮', '🇧', '🇦', '🇳'],
+            'kal' : ['<:Raja:1488127825859838103>', '🤡'], 
+            'drip' : ['👴'],
+            'zaza' : ['<:crown:1499124023710191777>'],
+            'bayrou' : ['<:bayrou:1499124107936272415>']
+        }
     },
     1341134017684308080 : {
         "MEMBER" : 1378019701484945599,
@@ -25,7 +35,15 @@ GUILDS = {
         "help2" : 1487546393936662769,
         "rules" : 1468349920237977690,
         "advices" : 1341156549858558145,
-        "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kalindrov", "Kazukaka"]
+        "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kalindrov", "Kazukaka"],
+        "words" : {
+            'aya' : ['✨'], 
+            'hus' : ['✨','<a:tianluforhus:1488296905250308317>'], 
+            'steel' : ['👑'], 
+            'kazu' : ['🤮', '🇧', '🇦', '🇳'],
+            'kal' : ['<:Raja:1488127825859838103>', '<a:rajagif:1488138198939996272>'], 
+            'drip' : ['👴']
+        }
     }
 }
 
