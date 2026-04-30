@@ -71,7 +71,7 @@ class MemberApprovalView(discord.ui.View):
         )
 
         # Send a welcome message in the announcement channel
-        salon_annonce = guild.get_channel(self.guild_config.get("SALON_ANNONCE_ID"))
+        salon_annonce = guild.get_channel(self.guild_config.get("SALON_NEW_MEMBERS"))
         club_name = self.guild_config.get("Name", guild.name)
         rules_id = self.guild_config.get("rules", "")
         advices_id = self.guild_config.get("advices", self.guild_config.get("advice", ""))
