@@ -89,7 +89,7 @@ class MemberApprovalView(discord.ui.View):
                 welcome_embed.set_thumbnail(url=member.avatar.url)
             welcome_embed.add_field(
                 name="<a:research:1488144464835776622> Useful channels",
-                value=f"• Read the rules in <#{rules_id}>\n• Ask your questions in <#{advices_id}>\n",
+                value=f"• Read the rules in <#{rules_id}> <:list:1499364068702818434>\n• Ask your questions in <#{advices_id}>\n",
                 inline=False
             )
             welcome_embed.add_field(

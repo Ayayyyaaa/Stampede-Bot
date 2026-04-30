@@ -50,7 +50,7 @@ class EventsCog(commands.Cog):
 
         embed.add_field(
             name="<a:research:1488144464835776622> Useful channels",
-            value=f"• Read the rules in <#{rules_id}>\n• Ask your questions in <#{advices_id}>\n",
+            value=f"• Read the rules in <#{rules_id}> <:list:1499364068702818434>\n• Ask your questions in <#{advices_id}>\n",
             inline=False
         )
         embed.add_field(
