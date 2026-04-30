@@ -201,8 +201,11 @@ class RejectConfirmView(discord.ui.View):
     async def on_timeout(self):
         # Silently expire — the ephemeral message will just become stale
         self.stop()
-
-    @discord.ui.button(label="Yes, kick them", style=discord.ButtonStyle.danger, emoji="🚫")
+    @discord.ui.button(
+        label="Yes, kick them",
+        style=discord.ButtonStyle.danger,
+        emoji=discord.PartialEmoji(name="optis", id=1488294635519479918, animated=False),
+    )
     async def confirm_kick(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.mod.id:
             await interaction.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
@@ -283,7 +286,7 @@ class MemberApprovalCog(commands.Cog):
         if not guild_config:
             return
 
-        log_channel_id = guild_config.get("SALON_LOG_ID")
+        log_channel_id = guild_config.get("SALON_NEW_MEMBERS")
         if not log_channel_id:
             return
 
