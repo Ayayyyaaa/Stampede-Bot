@@ -103,6 +103,8 @@ class AnnouncementsCog(commands.Cog):
             if not salon:
                 continue
             guild = self.bot.get_guild(guild_id)
+            if guild_config.get("Name") == "Surging Calamity":
+                return
             server_name = guild_config.get("Name") or (guild.name if guild else "Unknown")
 
             help1 = guild_config.get("help1", "0")
