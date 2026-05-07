@@ -964,11 +964,16 @@ class ScoresCog(commands.Cog):
         data = load_data(interaction.guild_id)
         guild_id = interaction.guild_id
 
+        members = load_members(guild_id)
+        in_member_list = find_member(members, old_name) is not None
+
         # Count occurrences in events
         events_affected = [e for e in data["events"] if old_name in e["scores"]]
-        if not events_affected:
+
+        # Must exist somewhere — either in scores or in the member list
+        if not events_affected and not in_member_list:
             await interaction.response.send_message(
-                f"❌ No scores found for **{old_name}**.", ephemeral=True)
+                f"❌ **{old_name}** was not found in any event scores or in the member list.", ephemeral=True)
             return
 
         # Check if new_name already exists (collision risk)
@@ -977,10 +982,11 @@ class ScoresCog(commands.Cog):
         members = load_members(guild_id)
         in_member_list = find_member(members, old_name) is not None
 
-        summary = (
-            f"Rename **{old_name}** → **{new_name}**\n"
-            f"<:faction:1488292952618045440> **{len(events_affected)}** event(s) affected\n"
-        )
+        summary = f"Rename **{old_name}** → **{new_name}**\n"
+        if events_affected:
+            summary += f"<:faction:1488292952618045440> **{len(events_affected)}** event(s) affected\n"
+        else:
+            summary += "<:faction:1488292952618045440> No event scores to update\n"
         if in_member_list:
             summary += "<:usefull:1488293835137093683> Also updated in the member list\n"
         if collision_events:
