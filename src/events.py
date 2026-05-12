@@ -120,18 +120,37 @@ class EventsCog(commands.Cog):
                     import random
                     if random.randint(1, 10) == 1:
                         await message.reply("Go touch grass 🌱")
-            
-        contenu_minuscule = message.content.lower()
-        words = guild_config["words"] if guild_config else {}
-        for mot, liste in words.items():
-            if mot in contenu_minuscule:
-                for emoji in liste:
-                    try:
-                        await message.add_reaction(emoji)
-                    except discord.HTTPException:
-                        pass 
-                        
-        contenu_minuscule = contenu_minuscule.replace('-','').replace('/','').replace('_','')
+
+
+        PERSONNES_A_NOTIFIER = [config.admin['ayagus'],config.admin['husgus'],config.admin['steel']] 
+        CORYSCLIPS_ID = 1230989642996777000
+
+        contenu_minuscule = message.content.lower().replace('-', '').replace('/', '').replace('_', '')
+
+        PATTERNS_CORYSCLIPS = [
+            'corysclips',
+            'corrysclips',
+            'corrys clips',
+            'corys clips',
+            str(CORYSCLIPS_ID),
+            f'<@{CORYSCLIPS_ID}>',
+            f'<@!{CORYSCLIPS_ID}>',
+        ]
+
+        if guild_config and any(p in contenu_minuscule for p in PATTERNS_CORYSCLIPS):
+            for user_id in PERSONNES_A_NOTIFIER:
+                try:
+                    user = await self.bot.fetch_user(user_id)
+                    await user.send(
+                        f"**{message.author.display_name}** mentioned that bastard CorrysClips in his message :\n"
+                        f"> {message.content}\n"
+                        f"in the {message.channel.mention} channel on the **{message.guild.name} server.**\n"
+                        f"I hope that was meant to be an insult\n"
+                        f"----> https://discord.com/channels/{message.guild.id}/{message.channel.id}/{message.id}"
+                    )
+                except discord.HTTPException as e:
+                    print(f"Erreur envoi DM à {user_id} : {e}")
+
         if re.search(r'\b67\b', contenu_minuscule):
             await message.channel.send('https://klipy.com/gifs/cat-67')
         if re.search('bayrou', contenu_minuscule):

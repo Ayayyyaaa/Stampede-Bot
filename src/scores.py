@@ -979,9 +979,6 @@ class ScoresCog(commands.Cog):
         # Check if new_name already exists (collision risk)
         collision_events = [e for e in events_affected if new_name in e["scores"]]
 
-        members = load_members(guild_id)
-        in_member_list = find_member(members, old_name) is not None
-
         summary = f"Rename **{old_name}** → **{new_name}**\n"
         if events_affected:
             summary += f"<:faction:1488292952618045440> **{len(events_affected)}** event(s) affected\n"
@@ -1064,6 +1061,58 @@ class ScoresCog(commands.Cog):
             color=discord.Color.orange()
         )
         await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=False)
+
+    '''@app_commands.command(name="score_event", description="Display all scores recorded for a specific event")
+    @app_commands.describe(
+        event_type="Event type",
+        date="Date of the event (YYYY-MM-DD format)"
+    )
+    @app_commands.choices(event_type=[
+        Choice(name="Smash", value="smash"),
+        Choice(name="Mechs", value="mechs"),
+    ])
+    async def score_event(self, interaction: discord.Interaction, event_type: str, date: str):
+        data = load_data(interaction.guild_id)
+        event = find_event(data, event_type, date)
+        if not event:
+            await interaction.response.send_message(
+                f"❌ No **{TYPE_LABEL[event_type]}** event found for **{date}**.", ephemeral=True)
+            return
+
+        scores = event["scores"]
+        if not scores:
+            await interaction.response.send_message(
+                f"⚠️ No scores recorded yet for **{TYPE_LABEL[event_type]}** — **{date}**.", ephemeral=False)
+            return
+
+        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        total = sum(scores.values())
+
+        member_names = get_member_names(interaction.guild_id)
+
+        lines = []
+        for rank, (player, score) in enumerate(sorted_scores, start=1):
+            in_club = "" if player in member_names else " ⁽*⁾"
+            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"`#{rank}`")
+            lines.append(f"{medal} **{player}**{in_club} — {score:,}")
+
+        # Split into chunks of 20 to avoid hitting embed field limits
+        chunk_size = 20
+        chunks = [lines[i:i + chunk_size] for i in range(0, len(lines), chunk_size)]
+
+        embed = discord.Embed(
+            title=f"<:announcement:1496817320440500335> {TYPE_LABEL[event_type]} — {date}",
+            description=event.get("description") or "",
+            color=discord.Color.from_str(COLORS["smash"] if event_type == "smash" else COLORS["mechs"]),
+            timestamp=datetime.datetime.now()
+        )
+
+        for i, chunk in enumerate(chunks):
+            field_name = "Scores" if len(chunks) == 1 else f"Scores ({i * chunk_size + 1}–{i * chunk_size + len(chunk)})"
+            embed.add_field(name=field_name, value="\n".join(chunk), inline=False)
+
+        embed.set_footer(text=f"{len(scores)} players  •  Total : {total:,}  •  ⁽*⁾ not in the club")
+        await interaction.response.send_message(embed=embed) '''
 
 
 async def setup(bot):
