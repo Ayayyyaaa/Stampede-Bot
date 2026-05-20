@@ -10,6 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.patches import FancyBboxPatch
+from zoneinfo import ZoneInfo
 import numpy as np
 from io import BytesIO
 import config
@@ -934,6 +935,130 @@ class ScoresCog(commands.Cog):
         embed.add_field(name="<:optis:1488294635519479918> Score deleted", value=f"{old_score:,}", inline=True)
         embed.add_field(name="<:calendar:1496816276780224512> Event", value=f"{TYPE_LABEL[event_type]} — {date}", inline=False)
         embed.set_footer(text=f"Par {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
+
+
+    @app_commands.command(name="member", description="Show stats and profile of a club member")
+    @app_commands.describe(member_name="In-game name of the member")
+    async def member_profile(self, interaction: discord.Interaction, member_name: str):
+        gc = await self._check_guild(interaction)
+        if not gc:
+            return
+
+        guild_id = interaction.guild_id
+        members = load_members(guild_id)
+        member_entry = find_member(members, member_name)
+
+        if member_entry is None:
+            await interaction.response.send_message(
+                f"❌ **{member_name}** was not found in the club member list.", ephemeral=True
+            )
+            return
+
+        data = load_data(guild_id)
+        events = data["events"]
+
+        participated = [e for e in events if member_name in e["scores"]]
+        total_events = len(participated)
+        smash_events = [e for e in participated if e["type"] == "smash"]
+        mechs_events  = [e for e in participated if e["type"] == "mechs"]
+
+        avg_smash = (
+            sum(e["scores"][member_name] for e in smash_events) / len(smash_events)
+            if smash_events else None
+        )
+        avg_mechs = (
+            sum(e["scores"][member_name] for e in mechs_events) / len(mechs_events)
+            if mechs_events else None
+        )
+
+        best_smash = max((e["scores"][member_name] for e in smash_events), default=None)
+        best_mechs  = max((e["scores"][member_name] for e in mechs_events),  default=None)
+
+        discord_id = member_entry.get("discord_id")
+        discord_member = None
+        avatar_url = None
+        if discord_id:
+            guild = interaction.guild
+            discord_member = guild.get_member(discord_id)
+            if discord_member is None:
+                try:
+                    discord_member = await guild.fetch_member(discord_id)
+                except discord.HTTPException:
+                    pass
+            if discord_member and discord_member.avatar:
+                avatar_url = discord_member.avatar.url
+
+        embed = discord.Embed(
+            title=f"<a:poussin:1499364053561114804> {member_name}",
+            color=discord.Color.dark_purple(),
+            timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
+        )
+
+        if avatar_url:
+            embed.set_thumbnail(url=avatar_url)
+
+        if discord_member:
+            embed.add_field(
+                name="<:players:1496861469583867987> Discord",
+                value=discord_member.mention,
+                inline=True
+            )
+        else:
+            embed.add_field(
+                name="<:players:1496861469583867987> Discord",
+                value="*Not linked*",
+                inline=True
+            )
+
+        embed.add_field(
+            name="<:calendar:1496816276780224512> Events played",
+            value=(
+                f"**{total_events}** total\n"
+                f"<:smashpoint:1487425123718795367> {len(smash_events)} Smash\n"
+                f"<:mecha_icon:1488150151519535144> {len(mechs_events)} Mechs"
+            ),
+            inline=True
+        )
+
+        embed.add_field(name="\u200b", value="\u200b", inline=False)  # spacer
+
+        if smash_events:
+            embed.add_field(
+                name="<:smashpoint:1487425123718795367> Smash",
+                value=(
+                    f"Avg: **{avg_smash:,.0f}**\n"
+                    f"Best: **{best_smash:,}**\n"
+                    f"({len(smash_events)} event{'s' if len(smash_events) != 1 else ''})"
+                ),
+                inline=True
+            )
+        else:
+            embed.add_field(
+                name="<:smashpoint:1487425123718795367> Smash",
+                value="*No data yet*",
+                inline=True
+            )
+
+        if mechs_events:
+            embed.add_field(
+                name="<:mecha_icon:1488150151519535144> Mechs",
+                value=(
+                    f"Avg: **{avg_mechs:,.0f}**\n"
+                    f"Best: **{best_mechs:,}**\n"
+                    f"({len(mechs_events)} event{'s' if len(mechs_events) != 1 else ''})"
+                ),
+                inline=True
+            )
+        else:
+            embed.add_field(
+                name="<:mecha_icon:1488150151519535144> Mechs",
+                value="*No data yet*",
+                inline=True
+            )
+
+        club_name = gc.get("Name", interaction.guild.name)
+        embed.set_footer(text=f"{club_name} · Requested by {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
 

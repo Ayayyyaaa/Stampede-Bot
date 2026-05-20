@@ -128,6 +128,12 @@ class EventsCog(commands.Cog):
         contenu_minuscule = message.content.lower().replace('-', '').replace('/', '').replace('_', '')
 
         PATTERNS_CORYSCLIPS = [
+            'cory',
+            'corry',
+            'corrys',
+            'corys',
+            'corry\'s',
+            'cory\'s',
             'corysclips',
             'corrysclips',
             'corrys clips',
