@@ -38,6 +38,16 @@ GUILDS = {
         "help2" : 1387108158727782552,
         "rules" : 1524931670124400791,
         "advice" : 1387108158727782552,
+        "description" : (
+            "**1 -** Let the Spawner Hit Their Mechs First. All Mechs have a 30 Second Cooldown, Even Baby Mechs and Ascended Mechs. <a:research:1488144464835776622>\n"
+            "**2 -** You Must Achieve at Least 400 Billion Damage\n"
+            "**3 -** You Need to Summon a Minimum of 125 Boss Mechs \n"
+            "**4 -** Get to 75 Summons before the final day so all the mechs summoned are 240 or higher\n"
+            "**5 -** Summon and Kill 1 Mech in the first 24 hours, so your name appears in the Damage and Summons Leaderboard"
+            f"**6 -** If there is anything you need regarding the event send a private message to : {" , ".join(f"**{m}**" for m in ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"])}\n"
+            "**7 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
+            "\n\n-> If you have any issues regarding the requirements or will not be available to play the event, please let us know in advance"
+        ),
         "modos" : ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"],
         "words" : {
             'aya' : ['✨'], 

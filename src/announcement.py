@@ -8,20 +8,27 @@ import config
 def _format_modos(modos: list) -> str:
     return " , ".join(f"**{m}**" for m in modos)
 
-def creer_embed_mech(server_name: str, help1: str, help2: str, modos: list):
+
+def creer_embed_mech(server_name: str, help1: str, help2: str, modos: list, desc: str = None):
     nom_image = "resources/eventmechas.png"
     nom_image2 = "resources/tapforce.png"
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
-    embed = discord.Embed(
-        title=f"<:mecha_icon:1488150151519535144> Rules of the Mech Event in {server_name} <:mecha_icon:1488150151519535144>",
-        description=(
+
+    if desc:
+        txt = desc
+    else:
+        txt = (
             "**1 -** Dont kill mechs 180 <:mech180:1488607738404671648> and below of other players, and avoid finishing off mechs unless the player doesn't mind\n"
             "**2 -** Always buy the daily 500 gem phone packs <:greyphone:1487424771200254013> -> if you have any gold phones <:goldphone:1488139733841346662> you can't use, convert them to gray phones\n"
             "**3 -** Always allow the spawner to get the first hit unless 5 minutes pass <a:research:1488144464835776622>\n"
             f"**4 -** If there is anything you need regarding the event send a private message to : {_format_modos(modos)}\n"
             "**5 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
-        ),
+        )
+
+    embed = discord.Embed(
+        title=f"<:mecha_icon:1488150151519535144> Rules of the Mech Event in {server_name} <:mecha_icon:1488150151519535144>",
+        description=txt,
         color=discord.Color.red(),
         timestamp=datetime.datetime.now()
     )
@@ -76,12 +83,17 @@ class AnnouncementsCog(commands.Cog):
     def _get_modos(self, interaction: discord.Interaction) -> list:
         gc = config.GUILDS.get(interaction.guild_id, {})
         return gc.get("modos", [])
+    
+    def _get_description(self, interaction: discord.Interaction):
+        gc = config.GUILDS.get(interaction.guild_id, {})
+        return gc.get("description")
 
     @app_commands.command(name="rule_mechs", description="Show the rules for mechs events")
     async def rule_mechs(self, interaction: discord.Interaction):
         help1, help2 = self._get_help_channel(interaction)
         modos = self._get_modos(interaction)
-        embed, fichiers = creer_embed_mech(self._get_server_name(interaction), help1, help2, modos)
+        desc = self._get_description(interaction)
+        embed, fichiers = creer_embed_mech(self._get_server_name(interaction), help1, help2, modos, desc)
         embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed, files=fichiers)
 
@@ -100,11 +112,12 @@ class AnnouncementsCog(commands.Cog):
 
         for guild_id, guild_config in config.GUILDS.items():
             salon = self.bot.get_channel(guild_config.get("SALON_ANNONCE_ID"))
+            desc = guild_config.get("description")
             if not salon:
                 continue
             guild = self.bot.get_guild(guild_id)
             if guild_config.get("Name") == "Surging Calamity":
-                return
+                continue
             server_name = guild_config.get("Name") or (guild.name if guild else "Unknown")
 
             help1 = guild_config.get("help1", "0")
@@ -112,12 +125,12 @@ class AnnouncementsCog(commands.Cog):
             modos = guild_config.get("modos", [])
 
             member_role_id = guild_config.get("MEMBER")
-            message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>"
+            message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>\nI would like All club members to add a 🔥 reaction to the requirement points so we know you will follow the rules."
 
             if self.utiliser_annonce_smash:
                 mon_embed, mes_fichiers = creer_embed_smash(server_name, help1, help2, modos)
             else:
-                mon_embed, mes_fichiers = creer_embed_mech(server_name, help1, help2, modos)
+                mon_embed, mes_fichiers = creer_embed_mech(server_name, help1, help2, modos, desc)
 
             await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
 
