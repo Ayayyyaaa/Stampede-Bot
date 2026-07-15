@@ -6,23 +6,73 @@ import config
 from src.scores import add_member_if_absent
 
 
+class ClubSelectMenu(discord.ui.Select):
+    """Dropdown shown only on multi-club servers, so a co-lead picks which
+    club the new member is joining before Accept/Reject/Ignore can be used."""
+
+    def __init__(self, parent_view: "MemberApprovalView"):
+        self.parent_view = parent_view
+        options = [
+            discord.SelectOption(label=cfg.get("Name", cid), value=cid)
+            for cid, cfg in parent_view.clubs.items()
+        ]
+        super().__init__(
+            placeholder="Choose the club this member is joining...",
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        if not self.parent_view._is_colead(interaction):
+            await interaction.response.send_message("❌ You don't have the permissions to do that.", ephemeral=True)
+            return
+
+        chosen_id = self.values[0]
+        self.parent_view.club_id = chosen_id
+        self.parent_view.club_config = self.parent_view.clubs[chosen_id]
+        self.placeholder = f"Club: {self.parent_view.club_config.get('Name', chosen_id)}"
+
+        for item in self.parent_view.children:
+            if isinstance(item, discord.ui.Button):
+                item.disabled = False
+
+        await interaction.response.edit_message(view=self.parent_view)
+
+
 class MemberApprovalView(discord.ui.View):
     """
     Buttons sent to the mod log channel when a new member joins.
     - ✅ Accept  : gives MEMBER role + adds to club member list
     - ❌ Reject  : kicks the member after a confirmation step
     - 🔕 Ignore  : dismisses the notification (no action)
+
+    On servers with several clubs, a club picker is shown first — the
+    Accept/Reject/Ignore buttons stay disabled until a club is chosen.
     """
 
-    def __init__(self, member: discord.Member, guild_config: dict):
+    def __init__(self, member: discord.Member, guild_id: int, clubs: dict):
         super().__init__(timeout=None)   # persistent until a mod acts
         self.member = member
-        self.guild_config = guild_config
+        self.guild_id = guild_id
+        self.clubs = clubs               # {club_id: club_config}
         self.handled = False             # prevent double-clicks
 
+        if len(clubs) == 1:
+            self.club_id, self.club_config = next(iter(clubs.items()))
+        else:
+            self.club_id, self.club_config = None, None
+            self.add_item(ClubSelectMenu(self))
+            for item in self.children:
+                if isinstance(item, discord.ui.Button):
+                    item.disabled = True
 
     def _is_colead(self, interaction: discord.Interaction) -> bool:
-        return any(r.id == self.guild_config["COLEAD"] for r in interaction.user.roles)
+        if self.club_config:
+            return any(r.id == self.club_config["COLEAD"] for r in interaction.user.roles)
+        # No club chosen yet: allow anyone who's co-lead of at least one club here
+        role_ids = {r.id for r in interaction.user.roles}
+        return any(cfg.get("COLEAD") in role_ids for cfg in self.clubs.values())
 
     async def _mark_handled(self, interaction: discord.Interaction, embed: discord.Embed):
         """Disables all buttons and edits the original message."""
@@ -42,6 +92,9 @@ class MemberApprovalView(discord.ui.View):
         if self.handled:
             await interaction.response.send_message("<a:research:1488144464835776622> This request has already been handled.", ephemeral=True)
             return
+        if not self.club_config:
+            await interaction.response.send_message("❌ Choose a club first.", ephemeral=True)
+            return
         if not self._is_colead(interaction):
             await interaction.response.send_message("❌ You don't have the permissions to do that.", ephemeral=True)
             return
@@ -55,7 +108,7 @@ class MemberApprovalView(discord.ui.View):
             )
             return
 
-        role = guild.get_role(self.guild_config["MEMBER"])
+        role = guild.get_role(self.club_config["MEMBER"])
         if role:
             try:
                 await member.add_roles(role, reason=f"Accepted by {interaction.user.display_name}")
@@ -66,15 +119,16 @@ class MemberApprovalView(discord.ui.View):
         # Add to club member list with Discord account linked
         add_member_if_absent(
             guild_id=guild.id,
+            club_id=self.club_id,
             name=member.display_name,
             discord_id=member.id
         )
 
         # Send a welcome message in the announcement channel
-        salon_annonce = guild.get_channel(self.guild_config.get("SALON_NEW_MEMBERS"))
-        club_name = self.guild_config.get("Name", guild.name)
-        rules_id = self.guild_config.get("rules", "")
-        advices_id = self.guild_config.get("advices", self.guild_config.get("advice", ""))
+        salon_annonce = guild.get_channel(self.club_config.get("SALON_NEW_MEMBERS"))
+        club_name = self.club_config.get("Name", guild.name)
+        rules_id = self.club_config.get("rules", "")
+        advices_id = self.club_config.get("advice", self.club_config.get("advices", ""))
 
         if salon_annonce:
             welcome_embed = discord.Embed(
@@ -111,8 +165,8 @@ class MemberApprovalView(discord.ui.View):
         result_embed = discord.Embed(
             title="<:players:1496861469583867987> Member accepted",
             description=(
-                f"**{member.display_name}** has been accepted by {interaction.user.mention}.\n"
-                f"Role <@&{self.guild_config['MEMBER']}> assigned and added to the club list."
+                f"**{member.display_name}** has been accepted into **{club_name}** by {interaction.user.mention}.\n"
+                f"Role <@&{self.club_config['MEMBER']}> assigned and added to the club list."
             ),
             color=discord.Color.green(),
             timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
@@ -133,6 +187,9 @@ class MemberApprovalView(discord.ui.View):
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.handled:
             await interaction.response.send_message("<a:research:1488144464835776622> This request has already been handled.", ephemeral=True)
+            return
+        if not self.club_config:
+            await interaction.response.send_message("❌ Choose a club first.", ephemeral=True)
             return
         if not self._is_colead(interaction):
             await interaction.response.send_message("❌ You don't have the permissions to do that.", ephemeral=True)
@@ -167,6 +224,9 @@ class MemberApprovalView(discord.ui.View):
     async def ignore(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.handled:
             await interaction.response.send_message("<a:research:1488144464835776622> This request has already been handled.", ephemeral=True)
+            return
+        if not self.club_config:
+            await interaction.response.send_message("❌ Choose a club first.", ephemeral=True)
             return
         if not self._is_colead(interaction):
             await interaction.response.send_message("❌ You don't have the permissions to do that.", ephemeral=True)
@@ -222,7 +282,7 @@ class RejectConfirmView(discord.ui.View):
             return
 
         # DM the rejected member
-        club_name = self.parent_view.guild_config.get("Name", guild.name)
+        club_name = self.parent_view.club_config.get("Name", guild.name)
         try:
             dm_embed = discord.Embed(
                 title=f"Application to {club_name}",
@@ -282,28 +342,39 @@ class MemberApprovalCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        guild_config = config.GUILDS.get(member.guild.id)
-        if not guild_config:
+        clubs = config.get_clubs(member.guild.id)
+        if not clubs:
             return
 
-        log_channel_id = guild_config.get("SALON_NEW_MEMBERS")
-        if not log_channel_id:
-            return
+        # A join event isn't tied to any specific channel, so we can't guess the
+        # club from a category the way other features do. On a multi-club server
+        # the notification goes to a shared onboarding channel (here: the first
+        # club's SALON_NEW_MEMBERS — adjust to a dedicated shared channel if you
+        # prefer) and a co-lead picks the club from a dropdown before acting.
+        if len(clubs) == 1:
+            club_id, club_config = next(iter(clubs.items()))
+            log_channel_id = club_config.get("SALON_NEW_MEMBERS")
+        else:
+            club_id, club_config = None, None
+            log_channel_id = next(iter(clubs.values())).get("SALON_NEW_MEMBERS")
 
         log_channel = self.bot.get_channel(log_channel_id)
         if not log_channel:
             return
 
-        club_name = guild_config.get("Name", member.guild.name)
+        club_name = club_config.get("Name", member.guild.name) if club_config else member.guild.name
 
-        # Build the notification embed
+        description = f"{member.mention} (**{member.display_name}**) just joined **{member.guild.name}**.\n\n"
+        if club_config:
+            description = f"{member.mention} (**{member.display_name}**) just joined **{club_name}**.\n\n"
+        description += (
+            f"Account created: <t:{int(member.created_at.timestamp())}:R>\n"
+            f"Joined at: <t:{int(member.joined_at.timestamp())}:R>"
+        )
+
         embed = discord.Embed(
             title="<:announcement:1496817320440500335> New member request",
-            description=(
-                f"{member.mention} (**{member.display_name}**) just joined **{club_name}**.\n\n"
-                f"Account created: <t:{int(member.created_at.timestamp())}:R>\n"
-                f"Joined at: <t:{int(member.joined_at.timestamp())}:R>"
-            ),
+            description=description,
             color=discord.Color.blurple(),
             timestamp=datetime.datetime.now(ZoneInfo("Europe/Paris"))
         )
@@ -313,21 +384,32 @@ class MemberApprovalCog(commands.Cog):
         else:
             embed.set_thumbnail(url=member.default_avatar.url)
 
+        actions_value = (
+            "<:players:1496861469583867987> **Accept** — Gives the Member role and adds to the club list\n"
+            "<:optis:1488294635519479918> **Reject** — Kicks the member (with confirmation)\n"
+            "<:notif:1496819951296839811> **Ignore** — Dismisses this notification"
+        )
+        if not club_config:
+            actions_value = "**First, choose the club below.** Then:\n" + actions_value
         embed.add_field(
             name="<:usefull:1488293835137093683> Actions",
-            value=(
-                "<:players:1496861469583867987> **Accept** — Gives the Member role and adds to the club list\n"
-                "<:optis:1488294635519479918> **Reject** — Kicks the member (with confirmation)\n"
-                "<:notif:1496819951296839811> **Ignore** — Dismisses this notification"
-            ),
+            value=actions_value,
             inline=False
         )
         embed.set_footer(text=f"User ID: {member.id}")
 
-        colead_role = member.guild.get_role(guild_config["COLEAD"])
-        ping = colead_role.mention if colead_role else ""
+        if club_config:
+            colead_role = member.guild.get_role(club_config["COLEAD"])
+            ping = colead_role.mention if colead_role else ""
+        else:
+            mentions = []
+            for cfg in clubs.values():
+                role = member.guild.get_role(cfg.get("COLEAD"))
+                if role:
+                    mentions.append(role.mention)
+            ping = " ".join(mentions)
 
-        view = MemberApprovalView(member=member, guild_config=guild_config)
+        view = MemberApprovalView(member=member, guild_id=member.guild.id, clubs=clubs)
         await log_channel.send(content=ping, embed=embed, view=view)
 
 

@@ -16,18 +16,43 @@ from io import BytesIO
 import config
 
 
-def _data_file(guild_id: int) -> str:
+def _data_file(guild_id: int, club_id: str) -> str:
+    return f"data/{guild_id}/{club_id}/scores.json"
+
+def _members_file(guild_id: int, club_id: str) -> str:
+    return f"data/{guild_id}/{club_id}/members.json"
+
+# Anciens chemins (avant la séparation par club) — utilisés uniquement pour
+# migrer automatiquement les données existantes des serveurs mono-club.
+def _legacy_data_file(guild_id: int) -> str:
     return f"data/{guild_id}/scores.json"
 
-def _members_file(guild_id: int) -> str:
+def _legacy_members_file(guild_id: int) -> str:
     return f"data/{guild_id}/members.json"
 
 
-def load_data(guild_id: int) -> dict:
-    path = _data_file(guild_id)
+def _migrate_legacy_if_needed(guild_id: int, club_id: str):
+    """Si un ancien fichier (pré-multi-club) existe et que le nouveau n'existe pas
+    encore, on le déplace vers le nouvel emplacement. Ne fait rien sinon."""
+    new_data = _data_file(guild_id, club_id)
+    old_data = _legacy_data_file(guild_id)
+    if not os.path.exists(new_data) and os.path.exists(old_data):
+        os.makedirs(os.path.dirname(new_data), exist_ok=True)
+        os.replace(old_data, new_data)
+
+    new_members = _members_file(guild_id, club_id)
+    old_members = _legacy_members_file(guild_id)
+    if not os.path.exists(new_members) and os.path.exists(old_members):
+        os.makedirs(os.path.dirname(new_members), exist_ok=True)
+        os.replace(old_members, new_members)
+
+
+def load_data(guild_id: int, club_id: str) -> dict:
+    _migrate_legacy_if_needed(guild_id, club_id)
+    path = _data_file(guild_id, club_id)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     if not os.path.exists(path):
-        save_data(guild_id, {"events": []})
+        save_data(guild_id, club_id, {"events": []})
         return {"events": []}
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -39,11 +64,11 @@ def load_data(guild_id: int) -> dict:
         backup = path + ".bak"
         if os.path.exists(path):
             os.replace(path, backup)
-        save_data(guild_id, {"events": []})
+        save_data(guild_id, club_id, {"events": []})
         return {"events": []}
 
-def save_data(guild_id: int, data: dict):
-    path = _data_file(guild_id)
+def save_data(guild_id: int, club_id: str, data: dict):
+    path = _data_file(guild_id, club_id)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -51,11 +76,12 @@ def save_data(guild_id: int, data: dict):
 
 # ── Données membres ───────────────────────────────────────────────────────────
 
-def load_members(guild_id: int) -> list:
+def load_members(guild_id: int, club_id: str) -> list:
     """Returns a list of member dicts: {"name": str, "discord_id": int | None}"""
-    path = _members_file(guild_id)
+    _migrate_legacy_if_needed(guild_id, club_id)
+    path = _members_file(guild_id, club_id)
     if not os.path.exists(path):
-        save_members(guild_id, [])
+        save_members(guild_id, club_id, [])
         return []
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -72,17 +98,17 @@ def load_members(guild_id: int) -> list:
     except:
         return []
 
-def save_members(guild_id: int, members: list):
+def save_members(guild_id: int, club_id: str, members: list):
     """Saves a list of member dicts sorted by name."""
-    path = _members_file(guild_id)
+    path = _members_file(guild_id, club_id)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     sorted_members = sorted(members, key=lambda m: m["name"].lower())
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"members": sorted_members}, f, ensure_ascii=False, indent=2)
 
-def get_member_names(guild_id: int) -> list[str]:
+def get_member_names(guild_id: int, club_id: str) -> list[str]:
     """Helper: returns just the name strings (for backward-compatible lookups)."""
-    return [m["name"] for m in load_members(guild_id)]
+    return [m["name"] for m in load_members(guild_id, club_id)]
 
 def find_member(members: list, name: str) -> dict | None:
     """Find a member dict by name (case-sensitive)."""
@@ -91,27 +117,57 @@ def find_member(members: list, name: str) -> dict | None:
             return m
     return None
 
-def add_member_if_absent(guild_id: int, name: str, discord_id: int | None = None) -> bool:
+def add_member_if_absent(guild_id: int, club_id: str, name: str, discord_id: int | None = None) -> bool:
     """Add a member if not already present. Returns True if actually added."""
-    members = load_members(guild_id)
+    members = load_members(guild_id, club_id)
     if find_member(members, name):
         return False
     members.append({"name": name, "discord_id": discord_id})
-    save_members(guild_id, members)
+    save_members(guild_id, club_id, members)
     return True
 
 
 # ── Utilitaires ───────────────────────────────────────────────────────────────
 
-def get_guild_config(interaction: discord.Interaction) -> dict | None:
-    """Récupère la config du serveur et répond en erreur si inconnu."""
-    return config.GUILDS.get(interaction.guild_id)
+async def resolve_club_or_error(interaction: discord.Interaction, club: str = None):
+    """
+    Détermine le club concerné par la commande (auto via la catégorie du salon,
+    ou via le paramètre `club` explicite). Répond avec un message d'erreur et
+    retourne (None, None, None) si le serveur n'est pas configuré ou si le club
+    n'a pas pu être déterminé.
+
+    Retourne (guild_config, club_id, club_config).
+    """
+    gc = config.get_guild_config(interaction.guild_id)
+    if not gc:
+        await interaction.response.send_message("❌ This server is not configured.", ephemeral=True)
+        return None, None, None
+
+    club_id, club_config = config.resolve_club(interaction.guild_id, channel=interaction.channel, club_override=club)
+    if not club_id:
+        clubs = config.get_clubs(interaction.guild_id)
+        options = ", ".join(f"**{c.get('Name', cid)}**" for cid, c in clubs.items())
+        await interaction.response.send_message(
+            f"❌ I can't tell which club this concerns. Use this command in a channel that belongs to the right club's "
+            f"category, or specify the `club` option ({options}).",
+            ephemeral=True
+        )
+        return None, None, None
+
+    return gc, club_id, club_config
+
 
 def find_event(data: dict, event_type: str, date_str: str) -> dict | None:
     for event in data["events"]:
         if event["type"] == event_type and event["date"] == date_str:
             return event
     return None
+
+
+def club_choices(guild_id: int) -> list[Choice]:
+    """Construit dynamiquement les choix de club pour l'autocomplétion (si plusieurs clubs)."""
+    clubs = config.get_clubs(guild_id)
+    return [Choice(name=cfg.get("Name", cid), value=cid) for cid, cfg in clubs.items()]
 
 
 # ── Graphiques ────────────────────────────────────────────────────────────────
@@ -224,7 +280,7 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
     return _buf(fig)
 
 
-def chart_average_per_player(data: dict, guild_id: int, event_type: str | None = None) -> BytesIO:
+def chart_average_per_player(data: dict, guild_id: int, club_id: str, event_type: str | None = None) -> BytesIO:
     if event_type == "all":
         event_type = None
     events = data["events"]
@@ -235,7 +291,7 @@ def chart_average_per_player(data: dict, guild_id: int, event_type: str | None =
         label = f" of type **{TYPE_LABEL[event_type]}**" if event_type else ""
         raise ValueError(f"No event found{label}. Create one first with `/add_event`.")
 
-    member_names = get_member_names(guild_id)
+    member_names = get_member_names(guild_id, club_id)
     player_scores: dict[str, list] = {}
     for e in events:
         for player, score in e["scores"].items():
@@ -277,30 +333,23 @@ class ScoresCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def _check_guild(self, interaction: discord.Interaction) -> dict | None:
-        """Vérifie que le serveur est configuré et répond en erreur sinon."""
-        gc = config.GUILDS.get(interaction.guild_id)
-        if not gc:
-            await interaction.response.send_message(
-                "❌ This server is not configured.", ephemeral=True)
-        return gc
-
     @app_commands.command(name="add_event", description="Add an event (smash/mechs) with a date")
     @app_commands.describe(
         event_type="Type of event",
         date="Date of the event (YYYY-MM-DD format)",
-        description="Optional description of the event"
+        description="Optional description of the event",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
     )
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
     async def add_event(self, interaction: discord.Interaction,
-                        event_type: str, date: str, description: str = ""):
-        gc = await self._check_guild(interaction)
+                        event_type: str, date: str, description: str = "", club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ You don't have the permissions to do that", ephemeral=True)
             return
 
@@ -311,7 +360,7 @@ class ScoresCog(commands.Cog):
                 "❌ Invalid date format. Use **YYYY-MM-DD** (ex: 2025-07-18).", ephemeral=True)
             return
 
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         if find_event(data, event_type, date):
             await interaction.response.send_message(
                 f"⚠️ An event **{TYPE_LABEL[event_type]}** already exists for the **{date}**.", ephemeral=False)
@@ -323,7 +372,7 @@ class ScoresCog(commands.Cog):
             "description": description,
             "scores": {}
         })
-        save_data(interaction.guild_id, data)
+        save_data(interaction.guild_id, club_id, data)
 
         embed = discord.Embed(
             title=f"{TYPE_LABEL[event_type]} — Event added !",
@@ -331,7 +380,7 @@ class ScoresCog(commands.Cog):
             color=discord.Color.from_str(COLORS["smash"] if event_type == "smash" else COLORS["mechs"]),
             timestamp=datetime.datetime.now()
         )
-        embed.set_footer(text=f"Added by {interaction.user.display_name}")
+        embed.set_footer(text=f"{cc.get('Name', club_id)} · Added by {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
 
@@ -339,18 +388,19 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(
         event_type="Event type",
         date="Date of the event (YYYY-MM-DD format)",
-        scores="Scores in the format: Player1:score1, Player2:score2, ..."
+        scores="Scores in the format: Player1:score1, Player2:score2, ...",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
     )
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
     async def add_scores(self, interaction: discord.Interaction,
-                         event_type: str, date: str, scores: str):
-        gc = await self._check_guild(interaction)
+                         event_type: str, date: str, scores: str, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id in (gc["COLEAD"], gc["MEMBER"]) for r in interaction.user.roles):
+        if not any(r.id in (cc["COLEAD"], cc["MEMBER"]) for r in interaction.user.roles):
             await interaction.response.send_message("❌ You don't have the permission to do that.", ephemeral=True)
             return
 
@@ -388,7 +438,7 @@ class ScoresCog(commands.Cog):
             await interaction.response.send_message(msg, ephemeral=True)
             return
 
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         event = find_event(data, event_type, date)
         if not event:
             await interaction.response.send_message(
@@ -404,7 +454,7 @@ class ScoresCog(commands.Cog):
                 added.append((player_name, score))
             event["scores"][player_name] = score
 
-        save_data(interaction.guild_id, data)
+        save_data(interaction.guild_id, club_id, data)
         total = sum(event["scores"].values())
 
         embed = discord.Embed(
@@ -429,32 +479,36 @@ class ScoresCog(commands.Cog):
             value=f"{total:,}  ·  {len(event['scores'])} players registered",
             inline=False
         )
-        embed.set_footer(text=f"By {interaction.user.display_name}")
+        embed.set_footer(text=f"{cc.get('Name', club_id)} · By {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="clear_scores", description="Deletes **ALL** saved events and scores")
-    async def clear_scores(self, interaction: discord.Interaction):
-        gc = await self._check_guild(interaction)
+    @app_commands.describe(club="Which club (only needed on multi-club servers, guessed from the channel otherwise)")
+    async def clear_scores(self, interaction: discord.Interaction, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
             return
-        save_data(interaction.guild_id, {"events": []})
-        await interaction.response.send_message("<:notif:1496819951296839811> **The scores database has been reset.** All events have been deleted.")
+        save_data(interaction.guild_id, club_id, {"events": []})
+        await interaction.response.send_message(f"<:notif:1496819951296839811> **The {cc.get('Name', club_id)} scores database has been reset.** All events have been deleted.")
 
 
     @app_commands.command(name="member_add", description="Add members — format: Player1, Player2:discordID, Player3;discordID")
-    @app_commands.describe(noms="Member(s) separated by commas. Optionally link a Discord ID: Name:123456789 or Name;123456789")
-    async def member_add(self, interaction: discord.Interaction, noms: str):
-        gc = await self._check_guild(interaction)
+    @app_commands.describe(
+        noms="Member(s) separated by commas. Optionally link a Discord ID: Name:123456789 or Name;123456789",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
+    async def member_add(self, interaction: discord.Interaction, noms: str, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ You don't have the permissions to do that", ephemeral=True)
             return
 
-        members = load_members(interaction.guild_id)
+        members = load_members(interaction.guild_id, club_id)
         added, already, errors = [], [], []
 
         for entry in noms.split(","):
@@ -501,10 +555,10 @@ class ScoresCog(commands.Cog):
                 added.append((nom, discord_id))
 
         if added or any(x[2] for x in already):
-            save_members(interaction.guild_id, members)
+            save_members(interaction.guild_id, club_id, members)
 
         embed = discord.Embed(
-            title="Club membership update",
+            title=f"{cc.get('Name', club_id)} — Membership update",
             color=discord.Color.green() if added else discord.Color.orange(),
             timestamp=datetime.datetime.now()
         )
@@ -526,42 +580,45 @@ class ScoresCog(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="member_remove", description="Remove a player from the members' list")
-    async def member_remove(self, interaction: discord.Interaction, nom: str):
-        gc = await self._check_guild(interaction)
+    @app_commands.describe(club="Which club (only needed on multi-club servers, guessed from the channel otherwise)")
+    async def member_remove(self, interaction: discord.Interaction, nom: str, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
             return
-        members = load_members(interaction.guild_id)
+        members = load_members(interaction.guild_id, club_id)
         member = find_member(members, nom)
         if not member:
-            await interaction.response.send_message(f"❌ {nom} is not on the list.")
+            await interaction.response.send_message(f"❌ {nom} is not on the {cc.get('Name', club_id)} list.")
             return
         members.remove(member)
-        save_members(interaction.guild_id, members)
-        await interaction.response.send_message(f"<a:nyx:1489283483376292004> **{nom}** has been expelled from the club.")
+        save_members(interaction.guild_id, club_id, members)
+        await interaction.response.send_message(f"<a:nyx:1489283483376292004> **{nom}** has been expelled from {cc.get('Name', club_id)}.")
 
     @app_commands.command(name="member_link", description="Link (or unlink) a Discord account to a player name")
     @app_commands.describe(
         nom="Player name in the club",
-        membre="Discord member to link (leave empty to unlink)"
+        membre="Discord member to link (leave empty to unlink)",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
     )
     async def member_link(self, interaction: discord.Interaction,
                           nom: str,
-                          membre: discord.Member | None = None):
-        gc = await self._check_guild(interaction)
+                          membre: discord.Member | None = None,
+                          club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
             return
 
-        members = load_members(interaction.guild_id)
+        members = load_members(interaction.guild_id, club_id)
         m = find_member(members, nom)
         if not m:
             await interaction.response.send_message(
-                f"❌ **{nom}** is not in the member list. Add them first with `/member_add`.",
+                f"❌ **{nom}** is not in the {cc.get('Name', club_id)} member list. Add them first with `/member_add`.",
                 ephemeral=True)
             return
 
@@ -573,7 +630,7 @@ class ScoresCog(commands.Cog):
                     f"⚠️ **{nom}** has no Discord account linked.", ephemeral=True)
                 return
             m["discord_id"] = None
-            save_members(interaction.guild_id, members)
+            save_members(interaction.guild_id, club_id, members)
             embed = discord.Embed(
                 title="<:notif:1496819951296839811> Discord account unlinked",
                 description=f"**{nom}** is no longer linked to <@{old_id}>.",
@@ -582,7 +639,7 @@ class ScoresCog(commands.Cog):
             )
         else:
             m["discord_id"] = membre.id
-            save_members(interaction.guild_id, members)
+            save_members(interaction.guild_id, club_id, members)
             embed = discord.Embed(
                 title="<:usefull:1488293835137093683> Discord account linked",
                 description=f"**{nom}** is now linked to {membre.mention}.",
@@ -592,21 +649,25 @@ class ScoresCog(commands.Cog):
             if membre.avatar:
                 embed.set_thumbnail(url=membre.avatar.url)
 
-        embed.set_footer(text=f"By {interaction.user.display_name}")
+        embed.set_footer(text=f"{cc.get('Name', club_id)} · By {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="member_list", description="Displays the list of current members")
-    async def member_list(self, interaction: discord.Interaction):
-        members = load_members(interaction.guild_id)
+    @app_commands.describe(club="Which club (only needed on multi-club servers, guessed from the channel otherwise)")
+    async def member_list(self, interaction: discord.Interaction, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
+        if not gc:
+            return
+        members = load_members(interaction.guild_id, club_id)
         if not members:
             await interaction.response.send_message(
-                "❌ The member list is empty.", ephemeral=False)
+                f"❌ The {cc.get('Name', club_id)} member list is empty.", ephemeral=False)
             return
         chunk_size = 15
         chunks = [members[i:i + chunk_size] for i in range(0, len(members), chunk_size)]
 
         embed = discord.Embed(
-            title=f"<:players:1496861469583867987> Club members — {len(members)}",
+            title=f"<:players:1496861469583867987> {cc.get('Name', club_id)} members — {len(members)}",
             color=discord.Color.dark_purple(),
             timestamp=datetime.datetime.now()
         )
@@ -628,35 +689,48 @@ class ScoresCog(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="scores_club", description="Chart: Change in the club's total score")
-    @app_commands.describe(event_type="Filter by type (optional)")
+    @app_commands.describe(
+        event_type="Filter by type (optional)",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
-    async def scores_club(self, interaction: discord.Interaction, event_type: str = "all"):
+    async def scores_club(self, interaction: discord.Interaction, event_type: str = "all", club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
+        if not gc:
+            return
         await interaction.response.defer()
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         try:
             buf = chart_club_evolution(data, None if event_type == "all" else event_type)
         except ValueError as e:
             await interaction.followup.send(f"❌ {e}", ephemeral=True)
             return
         file = discord.File(buf, filename="scores_club.png")
-        embed = discord.Embed(title="<:increase:1496861484569989251>  Changes in the club's total score", color=discord.Color.blurple())
+        embed = discord.Embed(title=f"<:increase:1496861484569989251>  {cc.get('Name', club_id)} — Changes in total score", color=discord.Color.blurple())
         embed.set_image(url="attachment://scores_club.png")
         await interaction.followup.send(embed=embed, file=file)
 
     @app_commands.command(name="scores_player", description="Chart: a player's score over time")
-    @app_commands.describe(player="Player's name", event_type="Filter by type (optional)")
+    @app_commands.describe(
+        player="Player's name",
+        event_type="Filter by type (optional)",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
-    async def scores_player(self, interaction: discord.Interaction, player: str, event_type: str = "all"):
+    async def scores_player(self, interaction: discord.Interaction, player: str, event_type: str = "all", club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
+        if not gc:
+            return
         await interaction.response.defer()
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         try:
             buf = chart_player_evolution(data, player, None if event_type == "all" else event_type)
         except ValueError as e:
@@ -668,34 +742,46 @@ class ScoresCog(commands.Cog):
         await interaction.followup.send(embed=embed, file=file)
 
     @app_commands.command(name="scores_average", description="Chart: average score for each player")
-    @app_commands.describe(event_type="Filter by type (optional)")
+    @app_commands.describe(
+        event_type="Filter by type (optional)",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
-    async def scores_average(self, interaction: discord.Interaction, event_type: str = "all"):
+    async def scores_average(self, interaction: discord.Interaction, event_type: str = "all", club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
+        if not gc:
+            return
         await interaction.response.defer()
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         try:
-            buf = chart_average_per_player(data, interaction.guild_id, None if event_type == "all" else event_type)
+            buf = chart_average_per_player(data, interaction.guild_id, club_id, None if event_type == "all" else event_type)
         except ValueError as e:
             await interaction.followup.send(f"❌ {e}", ephemeral=True)
             return
         file = discord.File(buf, filename="scores_average.png")
-        embed = discord.Embed(title="<:top1:1489297584752168990> Average score per player", color=discord.Color.gold())
+        embed = discord.Embed(title=f"<:top1:1489297584752168990> {cc.get('Name', club_id)} — Average score per player", color=discord.Color.gold())
         embed.set_image(url="attachment://scores_average.png")
         await interaction.followup.send(embed=embed, file=file)
 
     @app_commands.command(name="list_events", description="List all recorded events")
-    @app_commands.describe(event_type="Filter by type (optional)")
+    @app_commands.describe(
+        event_type="Filter by type (optional)",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
-    async def list_events(self, interaction: discord.Interaction, event_type: str = "all"):
-        data = load_data(interaction.guild_id)
+    async def list_events(self, interaction: discord.Interaction, event_type: str = "all", club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
+        if not gc:
+            return
+        data = load_data(interaction.guild_id, club_id)
         events = data["events"]
         if event_type != "all":
             events = [e for e in events if e["type"] == event_type]
@@ -703,7 +789,7 @@ class ScoresCog(commands.Cog):
         if not events:
             await interaction.response.send_message("No events recorded.", ephemeral=False)
             return
-        embed = discord.Embed(title="<:announcement:1496817320440500335> List of events", color=discord.Color.blurple())
+        embed = discord.Embed(title=f"<:announcement:1496817320440500335> {cc.get('Name', club_id)} — List of events", color=discord.Color.blurple())
         for e in events[:15]:
             nb_joueurs = len(e["scores"])
             total = sum(e["scores"].values())
@@ -718,20 +804,24 @@ class ScoresCog(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="delete_event", description="Deletes an entire event and all its scores")
-    @app_commands.describe(event_type="Event type", date="Date of the event (YYYY-MM-DD format)")
+    @app_commands.describe(
+        event_type="Event type",
+        date="Date of the event (YYYY-MM-DD format)",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
-    async def delete_event(self, interaction: discord.Interaction, event_type: str, date: str):
-        gc = await self._check_guild(interaction)
+    async def delete_event(self, interaction: discord.Interaction, event_type: str, date: str, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ Only co-leads can delete an event.", ephemeral=True)
             return
 
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         event = find_event(data, event_type, date)
         if not event:
             await interaction.response.send_message(
@@ -763,10 +853,10 @@ class ScoresCog(commands.Cog):
                 self.confirmed = True
                 self.stop()
                 await btn_interaction.response.defer()
-                data2 = load_data(guild_id)
+                data2 = load_data(guild_id, club_id)
                 data2["events"] = [e for e in data2["events"]
                                    if not (e["type"] == event_type and e["date"] == date)]
-                save_data(guild_id, data2)
+                save_data(guild_id, club_id, data2)
                 embed_ok = discord.Embed(
                     title="<:notif:1496819951296839811> Event deleted",
                     description=f"**{TYPE_LABEL[event_type]}** from **{date}** deleted.\n"
@@ -788,7 +878,7 @@ class ScoresCog(commands.Cog):
 
         embed_confirm = discord.Embed(
             title="<a:nyx:1489283483376292004> Confirm deletion",
-            description=f"You are about to delete **{TYPE_LABEL[event_type]}** from **{date}**.\n"
+            description=f"You are about to delete **{TYPE_LABEL[event_type]}** from **{date}** ({cc.get('Name', club_id)}).\n"
                         f"<:faction:1488292952618045440> {nb_joueurs} joueur(s) — <:top1:1489297584752168990> Total : {total:,}\n\n"
                         "**This action cannot be undone.**",
             color=discord.Color.orange()
@@ -799,7 +889,8 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(
         player="Name of the player to be removed",
         event_type="Limit to one event type (optional)",
-        date="Limit to a specific date (optional, format YYYY-MM-DD)"
+        date="Limit to a specific date (optional, format YYYY-MM-DD)",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
     )
     @app_commands.choices(event_type=[
         Choice(name="All events", value="all"),
@@ -807,15 +898,15 @@ class ScoresCog(commands.Cog):
         Choice(name="Mechs", value="mechs"),
     ])
     async def delete_player(self, interaction: discord.Interaction,
-                             player: str, event_type: str = "all", date: str = ""):
-        gc = await self._check_guild(interaction)
+                             player: str, event_type: str = "all", date: str = "", club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ Only co-leads can remove a player.", ephemeral=True)
             return
 
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         guild_id = interaction.guild_id
         occurrences = []
         for e in data["events"]:
@@ -855,7 +946,7 @@ class ScoresCog(commands.Cog):
                     return
                 self.stop()
                 await btn_interaction.response.defer()
-                data2 = load_data(guild_id)
+                data2 = load_data(guild_id, club_id)
                 count = 0
                 for e in data2["events"]:
                     if player not in e["scores"]:
@@ -866,7 +957,7 @@ class ScoresCog(commands.Cog):
                         continue
                     del e["scores"][player]
                     count += 1
-                save_data(guild_id, data2)
+                save_data(guild_id, club_id, data2)
                 embed_ok = discord.Embed(
                     title="<:notif:1496819951296839811> Player removed",
                     description=f"**{player}** taken from **{count}** event(s).",
@@ -887,7 +978,7 @@ class ScoresCog(commands.Cog):
 
         embed_confirm = discord.Embed(
             title="<a:nyx:1489283483376292004> Confirm deletion ?",
-            description=f"Delete **{player}** {scope} ?\n\n**This action is irreversible.**",
+            description=f"Delete **{player}** {scope} ({cc.get('Name', club_id)}) ?\n\n**This action is irreversible.**",
             color=discord.Color.orange()
         )
         await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=False)
@@ -896,22 +987,23 @@ class ScoresCog(commands.Cog):
     @app_commands.describe(
         event_type="Event type",
         date="Date of the event (YYYY-MM-DD format)",
-        player="Player's name"
+        player="Player's name",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
     )
     @app_commands.choices(event_type=[
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
     async def delete_score(self, interaction: discord.Interaction,
-                            event_type: str, date: str, player: str):
-        gc = await self._check_guild(interaction)
+                            event_type: str, date: str, player: str, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ You don't have the permissions to do that.", ephemeral=True)
             return
 
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         event = find_event(data, event_type, date)
         if not event:
             await interaction.response.send_message(
@@ -924,7 +1016,7 @@ class ScoresCog(commands.Cog):
             return
 
         old_score = event["scores"].pop(player)
-        save_data(interaction.guild_id, data)
+        save_data(interaction.guild_id, club_id, data)
 
         embed = discord.Embed(
             title="<:notif:1496819951296839811> Score deleted",
@@ -934,28 +1026,31 @@ class ScoresCog(commands.Cog):
         embed.add_field(name="<:faction:1488292952618045440> Player", value=player, inline=True)
         embed.add_field(name="<:optis:1488294635519479918> Score deleted", value=f"{old_score:,}", inline=True)
         embed.add_field(name="<:calendar:1496816276780224512> Event", value=f"{TYPE_LABEL[event_type]} — {date}", inline=False)
-        embed.set_footer(text=f"Par {interaction.user.display_name}")
+        embed.set_footer(text=f"{cc.get('Name', club_id)} · Par {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
 
     @app_commands.command(name="member", description="Show stats and profile of a club member")
-    @app_commands.describe(member_name="In-game name of the member")
-    async def member_profile(self, interaction: discord.Interaction, member_name: str):
-        gc = await self._check_guild(interaction)
+    @app_commands.describe(
+        member_name="In-game name of the member",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
+    async def member_profile(self, interaction: discord.Interaction, member_name: str, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
 
         guild_id = interaction.guild_id
-        members = load_members(guild_id)
+        members = load_members(guild_id, club_id)
         member_entry = find_member(members, member_name)
 
         if member_entry is None:
             await interaction.response.send_message(
-                f"❌ **{member_name}** was not found in the club member list.", ephemeral=True
+                f"❌ **{member_name}** was not found in the {cc.get('Name', club_id)} member list.", ephemeral=True
             )
             return
 
-        data = load_data(guild_id)
+        data = load_data(guild_id, club_id)
         events = data["events"]
 
         participated = [e for e in events if member_name in e["scores"]]
@@ -1057,21 +1152,21 @@ class ScoresCog(commands.Cog):
                 inline=True
             )
 
-        club_name = gc.get("Name", interaction.guild.name)
-        embed.set_footer(text=f"{club_name} · Requested by {interaction.user.display_name}")
+        embed.set_footer(text=f"{cc.get('Name', club_id)} · Requested by {interaction.user.display_name}")
         await interaction.response.send_message(embed=embed)
 
 
     @app_commands.command(name="rename", description="Rename a player across all events and the member list")
     @app_commands.describe(
         old_name="Current name of the player",
-        new_name="New name to give to the player"
+        new_name="New name to give to the player",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
     )
-    async def rename(self, interaction: discord.Interaction, old_name: str, new_name: str):
-        gc = await self._check_guild(interaction)
+    async def rename(self, interaction: discord.Interaction, old_name: str, new_name: str, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
-        if not any(r.id == gc["COLEAD"] for r in interaction.user.roles):
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
             await interaction.response.send_message("❌ Only co-leads can rename a player.", ephemeral=True)
             return
 
@@ -1086,10 +1181,10 @@ class ScoresCog(commands.Cog):
             await interaction.response.send_message("❌ Old and new names are identical.", ephemeral=True)
             return
 
-        data = load_data(interaction.guild_id)
+        data = load_data(interaction.guild_id, club_id)
         guild_id = interaction.guild_id
 
-        members = load_members(guild_id)
+        members = load_members(guild_id, club_id)
         in_member_list = find_member(members, old_name) is not None
 
         # Count occurrences in events
@@ -1104,7 +1199,7 @@ class ScoresCog(commands.Cog):
         # Check if new_name already exists (collision risk)
         collision_events = [e for e in events_affected if new_name in e["scores"]]
 
-        summary = f"Rename **{old_name}** → **{new_name}**\n"
+        summary = f"Rename **{old_name}** → **{new_name}** ({cc.get('Name', club_id)})\n"
         if events_affected:
             summary += f"<:faction:1488292952618045440> **{len(events_affected)}** event(s) affected\n"
         else:
@@ -1141,21 +1236,21 @@ class ScoresCog(commands.Cog):
                 await btn_interaction.response.defer()
 
                 # Apply rename in events
-                data2 = load_data(guild_id)
+                data2 = load_data(guild_id, club_id)
                 count = 0
                 for e in data2["events"]:
                     if old_name in e["scores"]:
                         e["scores"][new_name] = e["scores"].pop(old_name)
                         count += 1
-                save_data(guild_id, data2)
+                save_data(guild_id, club_id, data2)
 
                 # Apply rename in member list
-                members2 = load_members(guild_id)
+                members2 = load_members(guild_id, club_id)
                 member_updated = False
                 existing = find_member(members2, old_name)
                 if existing:
                     existing["name"] = new_name
-                    save_members(guild_id, members2)
+                    save_members(guild_id, club_id, members2)
                     member_updated = True
 
                 embed_ok = discord.Embed(
@@ -1186,58 +1281,6 @@ class ScoresCog(commands.Cog):
             color=discord.Color.orange()
         )
         await interaction.response.send_message(embed=embed_confirm, view=ConfirmView(), ephemeral=False)
-
-    '''@app_commands.command(name="score_event", description="Display all scores recorded for a specific event")
-    @app_commands.describe(
-        event_type="Event type",
-        date="Date of the event (YYYY-MM-DD format)"
-    )
-    @app_commands.choices(event_type=[
-        Choice(name="Smash", value="smash"),
-        Choice(name="Mechs", value="mechs"),
-    ])
-    async def score_event(self, interaction: discord.Interaction, event_type: str, date: str):
-        data = load_data(interaction.guild_id)
-        event = find_event(data, event_type, date)
-        if not event:
-            await interaction.response.send_message(
-                f"❌ No **{TYPE_LABEL[event_type]}** event found for **{date}**.", ephemeral=True)
-            return
-
-        scores = event["scores"]
-        if not scores:
-            await interaction.response.send_message(
-                f"⚠️ No scores recorded yet for **{TYPE_LABEL[event_type]}** — **{date}**.", ephemeral=False)
-            return
-
-        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        total = sum(scores.values())
-
-        member_names = get_member_names(interaction.guild_id)
-
-        lines = []
-        for rank, (player, score) in enumerate(sorted_scores, start=1):
-            in_club = "" if player in member_names else " ⁽*⁾"
-            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"`#{rank}`")
-            lines.append(f"{medal} **{player}**{in_club} — {score:,}")
-
-        # Split into chunks of 20 to avoid hitting embed field limits
-        chunk_size = 20
-        chunks = [lines[i:i + chunk_size] for i in range(0, len(lines), chunk_size)]
-
-        embed = discord.Embed(
-            title=f"<:announcement:1496817320440500335> {TYPE_LABEL[event_type]} — {date}",
-            description=event.get("description") or "",
-            color=discord.Color.from_str(COLORS["smash"] if event_type == "smash" else COLORS["mechs"]),
-            timestamp=datetime.datetime.now()
-        )
-
-        for i, chunk in enumerate(chunks):
-            field_name = "Scores" if len(chunks) == 1 else f"Scores ({i * chunk_size + 1}–{i * chunk_size + len(chunk)})"
-            embed.add_field(name=field_name, value="\n".join(chunk), inline=False)
-
-        embed.set_footer(text=f"{len(scores)} players  •  Total : {total:,}  •  ⁽*⁾ not in the club")
-        await interaction.response.send_message(embed=embed) '''
 
 
 async def setup(bot):

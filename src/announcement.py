@@ -72,36 +72,42 @@ class AnnouncementsCog(commands.Cog):
     def cog_unload(self):
         self.annonce_vendredi.cancel()
 
-    def _get_server_name(self, interaction: discord.Interaction) -> str:
-        gc = config.GUILDS.get(interaction.guild_id, {})
-        return gc.get("Name", interaction.guild.name)
-
-    def _get_help_channel(self, interaction: discord.Interaction):
-        gc = config.GUILDS.get(interaction.guild_id, {})
-        return gc.get("help1", "0"), gc.get("help2", "0")
-
-    def _get_modos(self, interaction: discord.Interaction) -> list:
-        gc = config.GUILDS.get(interaction.guild_id, {})
-        return gc.get("modos", [])
-    
-    def _get_description(self, interaction: discord.Interaction):
-        gc = config.GUILDS.get(interaction.guild_id, {})
-        return gc.get("description")
+    async def _resolve(self, interaction: discord.Interaction, club: str | None):
+        """Résout le club et renvoie sa config, ou répond avec un message d'erreur."""
+        club_id, club_config = config.resolve_club(interaction.guild_id, channel=interaction.channel, club_override=club)
+        if not club_config:
+            clubs = config.get_clubs(interaction.guild_id)
+            options = ", ".join(f"**{c.get('Name', cid)}**" for cid, c in clubs.items())
+            await interaction.response.send_message(
+                f"❌ I can't tell which club this concerns. Use this command in a channel that belongs to the right "
+                f"club's category, or specify the `club` option ({options}).",
+                ephemeral=True
+            )
+            return None
+        return club_config
 
     @app_commands.command(name="rule_mechs", description="Show the rules for mechs events")
-    async def rule_mechs(self, interaction: discord.Interaction):
-        help1, help2 = self._get_help_channel(interaction)
-        modos = self._get_modos(interaction)
-        desc = self._get_description(interaction)
-        embed, fichiers = creer_embed_mech(self._get_server_name(interaction), help1, help2, modos, desc)
+    @app_commands.describe(club="Which club (only needed on multi-club servers, guessed from the channel otherwise)")
+    async def rule_mechs(self, interaction: discord.Interaction, club: str = None):
+        cc = await self._resolve(interaction, club)
+        if not cc:
+            return
+        help1, help2 = cc.get("help1", "0"), cc.get("help2", "0")
+        modos = cc.get("modos", [])
+        desc = cc.get("description")
+        embed, fichiers = creer_embed_mech(cc.get("Name", interaction.guild.name), help1, help2, modos, desc)
         embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed, files=fichiers)
 
     @app_commands.command(name="rule_smash", description="Show the rules for smashs events")
-    async def rule_smash(self, interaction: discord.Interaction):
-        help1, help2 = self._get_help_channel(interaction)
-        modos = self._get_modos(interaction)
-        embed, fichiers = creer_embed_smash(self._get_server_name(interaction), help1, help2, modos)
+    @app_commands.describe(club="Which club (only needed on multi-club servers, guessed from the channel otherwise)")
+    async def rule_smash(self, interaction: discord.Interaction, club: str = None):
+        cc = await self._resolve(interaction, club)
+        if not cc:
+            return
+        help1, help2 = cc.get("help1", "0"), cc.get("help2", "0")
+        modos = cc.get("modos", [])
+        embed, fichiers = creer_embed_smash(cc.get("Name", interaction.guild.name), help1, help2, modos)
         embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed, files=fichiers)
 
@@ -111,28 +117,33 @@ class AnnouncementsCog(commands.Cog):
             return
 
         for guild_id, guild_config in config.GUILDS.items():
-            salon = self.bot.get_channel(guild_config.get("SALON_ANNONCE_ID"))
-            desc = guild_config.get("description")
-            if not salon:
-                continue
             guild = self.bot.get_guild(guild_id)
-            if guild_config.get("Name") == "Surging Calamity":
-                continue
-            server_name = guild_config.get("Name") or (guild.name if guild else "Unknown")
 
-            help1 = guild_config.get("help1", "0")
-            help2 = guild_config.get("help2", "0")
-            modos = guild_config.get("modos", [])
+            for club_id, club_config in config.get_clubs(guild_id).items():
+                salon = self.bot.get_channel(club_config.get("SALON_ANNONCE_ID"))
+                if not salon:
+                    continue
+                if club_config.get("Name") in ("Surging Calamity","Surge"):
+                    continue
 
-            member_role_id = guild_config.get("MEMBER")
-            message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>\nI would like All club members to add a 🔥 reaction to the requirement points so we know you will follow the rules."
+                desc = club_config.get("description")
+                server_name = club_config.get("Name") or (guild.name if guild else "Unknown")
 
-            if self.utiliser_annonce_smash:
-                mon_embed, mes_fichiers = creer_embed_smash(server_name, help1, help2, modos)
-            else:
-                mon_embed, mes_fichiers = creer_embed_mech(server_name, help1, help2, modos, desc)
+                help1 = club_config.get("help1", "0")
+                help2 = club_config.get("help2", "0")
+                modos = club_config.get("modos", [])
 
-            await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
+                member_role_id = club_config.get("MEMBER")
+                if not member_role_id:
+                    continue
+                message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>\nI would like All club members to add a 🔥 reaction to the requirement points so we know you will follow the rules."
+
+                if self.utiliser_annonce_smash:
+                    mon_embed, mes_fichiers = creer_embed_smash(server_name, help1, help2, modos)
+                else:
+                    mon_embed, mes_fichiers = creer_embed_mech(server_name, help1, help2, modos, desc)
+
+                await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
 
         self.utiliser_annonce_smash = not self.utiliser_annonce_smash
 

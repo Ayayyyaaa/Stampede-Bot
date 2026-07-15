@@ -19,26 +19,29 @@ class EventsCog(commands.Cog):
         if not guild:
             return
 
-        guild_config = config.GUILDS.get(payload.guild_id)
-        if not guild_config:
+        if not config.get_guild_config(payload.guild_id):
             return
+
+        channel = self.bot.get_channel(payload.channel_id)
+        club_id, club_config = config.resolve_club(payload.guild_id, channel=channel)
+        if not club_config:
+            return  # can't tell which club this channel belongs to
 
         react_author = guild.get_member(payload.user_id)
         if not react_author:
             return
-        
-        lead = any(role.id == guild_config["COLEAD"] for role in react_author.roles)
+
+        lead = any(role.id == club_config["COLEAD"] for role in react_author.roles)
         if not lead:
             return
-        
-        channel = self.bot.get_channel(payload.channel_id)
+
         message = await channel.fetch_message(payload.message_id)
         auteur = message.author
-        role = guild.get_role(guild_config["MEMBER"])
-        
-        club_name = guild_config.get("Name", guild.name)
-        rules_id = guild_config["rules"]
-        advices_id = guild_config.get("advices", guild_config.get("advice"))
+        role = guild.get_role(club_config["MEMBER"])
+
+        club_name = club_config.get("Name", guild.name)
+        rules_id = club_config["rules"]
+        advices_id = club_config.get("advice", club_config.get("advices"))
 
         embed = discord.Embed(
             title=f"<:Raja:1488127825859838103> Welcome in {club_name} ! <:Raja:1488127825859838103>",
@@ -66,7 +69,7 @@ class EventsCog(commands.Cog):
         )
 
         await message.channel.send(content=f"Welcome {auteur.mention} !", embed=embed)
-        
+
         if role:
             try:
                 await auteur.add_roles(role)
@@ -76,19 +79,20 @@ class EventsCog(commands.Cog):
         # Auto-add to club member list (uses display_name as in-game name, links Discord account)
         was_added = add_member_if_absent(
             guild_id=payload.guild_id,
+            club_id=club_id,
             name=auteur.display_name,
             discord_id=auteur.id
         )
         if was_added:
             try:
-                log_channel_id = guild_config.get("SALON_LOG_ID")
+                log_channel_id = club_config.get("SALON_LOG_ID")
                 if log_channel_id:
                     log_channel = self.bot.get_channel(log_channel_id)
                     if log_channel:
                         embed_log = discord.Embed(
                             title="<:usefull:1488293835137093683> Member auto-added",
                             description=(
-                                f"**{auteur.display_name}** has been automatically added to the member list.\n"
+                                f"**{auteur.display_name}** has been automatically added to the {club_name} member list.\n"
                                 f"Discord: {auteur.mention}\n"
                                 f"Accepted by: {react_author.mention}\n\n"
                                 f"You can link a different in-game name with `/member_link`."
@@ -107,14 +111,17 @@ class EventsCog(commands.Cog):
         if message.author.bot:
             return
 
-        guild_config = config.GUILDS.get(message.guild.id) if message.guild else None
+        guild_config = config.get_guild_config(message.guild.id) if message.guild else None
+        club_id, club_config = (None, None)
+        if guild_config:
+            club_id, club_config = config.resolve_club(message.guild.id, channel=message.channel)
 
-        if guild_config and message.channel.id == guild_config["ROUNDTABLE"]:
+        if club_config and message.channel.id == club_config.get("ROUNDTABLE"):
             if message.author.id in [config.admin['kazukuta'], config.admin['husgus']]:
                 heure_actuelle = datetime.datetime.now(ZoneInfo("Europe/Paris")).hour
                 if 0 <= heure_actuelle < 6:
                     try:
-                        await message.add_reaction("🌿") 
+                        await message.add_reaction("🌿")
                     except discord.HTTPException:
                         pass
                     import random
@@ -122,7 +129,7 @@ class EventsCog(commands.Cog):
                         await message.reply("Go touch grass 🌱")
 
 
-        PERSONNES_A_NOTIFIER = [config.admin['ayagus'],config.admin['husgus'],config.admin['steel']] 
+        PERSONNES_A_NOTIFIER = [config.admin['ayagus'],config.admin['husgus'],config.admin['steel']]
         CORYSCLIPS_ID = 1230989642996777000
 
         contenu_minuscule = message.content.lower().replace('-', '').replace('/', '').replace('_', '')
@@ -167,11 +174,17 @@ class EventsCog(commands.Cog):
         if not message.guild:
             return
 
-        guild_config = config.GUILDS.get(message.guild.id)
-        if not guild_config:
+        if not config.get_guild_config(message.guild.id):
             return
 
-        salon_log = self.bot.get_channel(guild_config["SALON_LOG_ID"])
+        club_id, club_config = config.resolve_club(message.guild.id, channel=message.channel)
+        if not club_config:
+            return
+
+        log_channel_id = club_config.get("SALON_LOG_ID")
+        if not log_channel_id:
+            return
+        salon_log = self.bot.get_channel(log_channel_id)
         if not salon_log:
             return
 
@@ -184,7 +197,7 @@ class EventsCog(commands.Cog):
                     temps_ecoule = discord.utils.utcnow() - entree.created_at
                     if temps_ecoule.total_seconds() < 15:
                         suppresseur = entree.user
-                        break 
+                        break
         except discord.Forbidden:
             pass
 
@@ -199,7 +212,7 @@ class EventsCog(commands.Cog):
         embed.add_field(name="Deleted by", value=nom_suppresseur, inline=True)
         embed.add_field(name="Channel", value=message.channel.mention, inline=False)
         embed.set_thumbnail(url=message.author.display_avatar.url)
-        
+
         await salon_log.send(embed=embed)
 
 async def setup(bot):
