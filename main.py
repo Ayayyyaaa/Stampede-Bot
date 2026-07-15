@@ -20,6 +20,7 @@ class StampedeBot(commands.Bot):
         await self.load_extension("src.scores")
         await self.load_extension("src.whois")
         await self.load_extension("src.member_approval")
+        await self.load_extension("src.instructions")
         await self.tree.sync()
         print("✅ Commandes Slash synchronisées.")
 

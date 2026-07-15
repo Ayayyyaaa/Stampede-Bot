@@ -33,7 +33,7 @@ GUILDS = {
         "CLUBS": {
             "default": {
                 "Name": "Surging Calamity",
-                "CATEGORY_ID": None,  # inutile : un seul club sur ce serveur
+                "CATEGORY_ID": None,  
                 "MEMBER": 1388939509151825980,
                 "COLEAD": 1386638288512745543,
                 "SALON_ANNONCE_ID": 1386814190723006494,
@@ -45,6 +45,7 @@ GUILDS = {
                 "rules": 1496975331033088130,
                 "advice": 1388626869980758207,
                 "modos": ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"],
+                "screenshot_channels": [1390475371714969755, 1399384407822827541],
             }
         }
     },
@@ -69,11 +70,11 @@ GUILDS = {
                 "MEMBER": 1448771989996044368,
                 "COLEAD": 1504527597139263638,
                 "SALON_ANNONCE_ID": 1524931670124400791,
-                "SALON_LOG_ID": None,  
+                "SALON_LOG_ID": None,
                 "SALON_NEW_MEMBERS": 1326945428796866621,
                 "ROUNDTABLE": 1512185869237223664,
                 "help1": 1387108158727782552,
-                "help2": 1272636727822913673,
+                "help2": 1387108158727782552,
                 "rules": 1524931670124400791,
                 "advice": 1387108158727782552,
                 "modos": ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"],
@@ -87,6 +88,7 @@ GUILDS = {
                     "**7 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
                     "\n\n-> If you have any issues regarding the requirements or will not be available to play the event, please let us know in advance"
                 ),
+                "screenshot_channels": [1463394745043914785,1466782565905076348],
             },
             "surge": {
                 "Name": "Surge",
@@ -98,10 +100,12 @@ GUILDS = {
                 "SALON_NEW_MEMBERS": 1512185869237223664,
                 "ROUNDTABLE": 1512185869237223664,
                 "help1": 1387108158727782552,
-                "help2": 1272636727822913673,
+                "help2": 1387108158727782552,
                 "rules": 1272636727600746574,
                 "advice": 1387108158727782552,
                 "modos": ["CorysClips", "MattRYeo"],
+                # TODO : renseigner les salons où Surge poste ses screenshots de scores
+                "screenshot_channels": [1272636727600746577,1409196858131087460],
             }
         }
     },
@@ -123,6 +127,8 @@ GUILDS = {
                 "rules": 1468349920237977690,
                 "advice": 1341156549858558145,
                 "modos": ["AyaGus", "SteelOfDmcls", "HusGus", "Kalindrov", "Kazukaka"],
+                # TODO : renseigner les salons où ce club poste ses screenshots de scores
+                "screenshot_channels": [1487046063834533909,1485410450723307551],
             }
         },
         "words": {
@@ -152,6 +158,8 @@ GUILDS = {
                 "rules": 1135884041158131712,
                 "advice": 1497615128936448091,
                 "modos": ["AyaGus", "SteelOfDmcls", "HusGus", "Kalindrov", "Kazukaka"],
+                # TODO : renseigner les salons où ce club poste ses screenshots de scores
+                "screenshot_channels": [1135884041158131712],
             }
         },
         "words": {
