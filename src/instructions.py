@@ -53,7 +53,7 @@ def _build_guide_embed() -> discord.Embed:
         "comparing the average scores of each player.\n"
     )
     return discord.Embed(
-        title="<:increase:1496861484569989251> StampedeBot Guide : Club Scores & Management! "
+        title="<:increase:1496861484569989251> TapTapBot Guide : Club Scores & Management! "
               "<:increase:1496861484569989251>",
         description=description,
         color=discord.Color.blurple()
