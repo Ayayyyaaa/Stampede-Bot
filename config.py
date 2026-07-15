@@ -43,8 +43,8 @@ GUILDS = {
             "**2 -** You Must Achieve at Least 400 Billion Damage\n"
             "**3 -** You Need to Summon a Minimum of 125 Boss Mechs \n"
             "**4 -** Get to 75 Summons before the final day so all the mechs summoned are 240 or higher\n"
-            "**5 -** Summon and Kill 1 Mech in the first 24 hours, so your name appears in the Damage and Summons Leaderboard"
-            f"**6 -** If there is anything you need regarding the event send a private message to : {" , ".join(f"**{m}**" for m in ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"])}\n"
+            "**5 -** Summon and Kill 1 Mech in the first 24 hours, so your name appears in the Damage and Summons Leaderboard\n"
+            f"**6 -** If there is anything you need regarding the event send a private message to : {' , '.join(f'**{m}**' for m in ['AyaGus', 'SteelOfDmcls', 'HusGus', 'Kazukaka'])}\n"
             "**7 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
             "\n\n-> If you have any issues regarding the requirements or will not be available to play the event, please let us know in advance"
         ),
