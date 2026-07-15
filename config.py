@@ -69,7 +69,7 @@ GUILDS = {
                 "MEMBER": 1448771989996044368,
                 "COLEAD": 1504527597139263638,
                 "SALON_ANNONCE_ID": 1524931670124400791,
-                "SALON_LOG_ID": None,  # TODO : pas de salon de logs actuellement, à créer/renseigner
+                "SALON_LOG_ID": None,  
                 "SALON_NEW_MEMBERS": 1326945428796866621,
                 "ROUNDTABLE": 1512185869237223664,
                 "help1": 1387108158727782552,
