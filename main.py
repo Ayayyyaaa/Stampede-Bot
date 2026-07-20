@@ -18,7 +18,6 @@ class StampedeBot(commands.Bot):
         await self.load_extension("src.commands")
         await self.load_extension("src.announcement")
         await self.load_extension("src.scores")
-        await self.load_extension("src.whois")
         await self.load_extension("src.member_approval")
         await self.load_extension("src.instructions")
         await self.tree.sync()
