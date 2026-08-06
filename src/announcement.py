@@ -64,7 +64,7 @@ def creer_embed_smash(server_name: str, help1: str, help2: str, modos: list):
 class AnnouncementsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.utiliser_annonce_smash = False
+        self.utiliser_annonce_smash = True
         self.annonce_vendredi.start()
 
     def cog_unload(self):
