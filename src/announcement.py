@@ -5,6 +5,8 @@ import datetime
 from zoneinfo import ZoneInfo
 import config
 
+REFERENCE_DATE_SMASH = datetime.date(2026, 8, 21) 
+
 def _format_modos(modos: list) -> str:
     return " , ".join(f"**{m}**" for m in modos)
 
@@ -64,7 +66,6 @@ def creer_embed_smash(server_name: str, help1: str, help2: str, modos: list):
 class AnnouncementsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.utiliser_annonce_smash = True
         self.annonce_vendredi.start()
 
     def cog_unload(self):
@@ -111,9 +112,12 @@ class AnnouncementsCog(commands.Cog):
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=ZoneInfo("Europe/Paris")))
     async def annonce_vendredi(self):
-        if datetime.datetime.now(ZoneInfo("Europe/Paris")).weekday() != 4:
+        now = datetime.datetime.now(ZoneInfo("Europe/Paris"))
+        if now.weekday() != 4:
             return
-
+        jours_ecoules = (now.date() - REFERENCE_DATE_SMASH).days
+        semaines_ecoulees = jours_ecoules // 7
+        est_semaine_smash = (semaines_ecoulees % 2 == 0)
         for guild_id, guild_config in config.GUILDS.items():
             guild = self.bot.get_guild(guild_id)
 
@@ -121,7 +125,7 @@ class AnnouncementsCog(commands.Cog):
                 salon = self.bot.get_channel(club_config.get("SALON_ANNONCE_ID"))
                 if not salon:
                     continue
-                if club_config.get("Name") in ("Surging Calamity","Surge"):
+                if club_config.get("Name") in ("Surging Calamity", "Surge"):
                     continue
 
                 desc = club_config.get("description")
@@ -134,16 +138,15 @@ class AnnouncementsCog(commands.Cog):
                 member_role_id = club_config.get("MEMBER")
                 if not member_role_id:
                     continue
+                
                 message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>\nI would like All club members to add a 🔥 reaction to the requirement points so we know you will follow the rules."
 
-                if self.utiliser_annonce_smash:
+                if est_semaine_smash:
                     mon_embed, mes_fichiers = creer_embed_smash(server_name, help1, help2, modos)
                 else:
                     mon_embed, mes_fichiers = creer_embed_mech(server_name, help1, help2, modos, desc)
 
                 await salon.send(content=message_texte, embed=mon_embed, files=mes_fichiers)
-
-        self.utiliser_annonce_smash = not self.utiliser_annonce_smash
 
     @annonce_vendredi.before_loop
     async def before_annonce(self):
