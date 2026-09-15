@@ -131,17 +131,24 @@ class EventsCog(commands.Cog):
 
         if guild_config and message.author.id in (config.admin['kazukuta'], config.admin['ayagus']):
             role_obj = message.guild.get_role(config.role)
+            kazu_member = message.guild.get_member(config.admin['kazukuta'])
+            aya_member = message.guild.get_member(config.admin['ayagus'])
+ 
             if role_obj:
                 if message.author.id == config.admin['kazukuta'] and role_obj not in message.author.roles:
                     try:
                         await message.author.add_roles(role_obj)
+                        if aya_member and role_obj in aya_member.roles:
+                            await aya_member.remove_roles(role_obj)
                     except discord.HTTPException as e:
-                        print(f"Erreur ajout rôle à kazu : {e}")
+                        print(f"Erreur gestion rôle (kazu) : {e}")
                 elif message.author.id == config.admin['ayagus'] and role_obj in message.author.roles:
                     try:
                         await message.author.remove_roles(role_obj)
+                        if kazu_member and role_obj not in kazu_member.roles:
+                            await kazu_member.add_roles(role_obj)
                     except discord.HTTPException as e:
-                        print(f"Erreur retrait rôle à aya : {e}")
+                        print(f"Erreur gestion rôle (aya) : {e}")
 
         PERSONNES_A_NOTIFIER = [config.admin['ayagus'],config.admin['husgus'],config.admin['steel']]
         CORYSCLIPS_ID = 1230989642996777000
