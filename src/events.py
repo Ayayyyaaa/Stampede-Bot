@@ -129,10 +129,34 @@ class EventsCog(commands.Cog):
                         await message.reply("Go touch grass 🌱")
 
 
+        if guild_config and message.author.id in (config.admin['kazukuta'], config.admin['ayagus']):
+            role_obj = message.guild.get_role(config.role)
+            if role_obj:
+                if message.author.id == config.admin['kazukuta'] and role_obj not in message.author.roles:
+                    try:
+                        await message.author.add_roles(role_obj)
+                    except discord.HTTPException as e:
+                        print(f"Erreur ajout rôle à kazu : {e}")
+                elif message.author.id == config.admin['ayagus'] and role_obj in message.author.roles:
+                    try:
+                        await message.author.remove_roles(role_obj)
+                    except discord.HTTPException as e:
+                        print(f"Erreur retrait rôle à aya : {e}")
+
         PERSONNES_A_NOTIFIER = [config.admin['ayagus'],config.admin['husgus'],config.admin['steel']]
         CORYSCLIPS_ID = 1230989642996777000
 
         contenu_minuscule = message.content.lower().replace('-', '').replace('/', '').replace('_', '')
+
+        if guild_config:
+            mots_reactions = config.get_words(message.guild.id)
+            for mot, emojis in mots_reactions.items():
+                if re.search(rf'\b{re.escape(mot)}\b', contenu_minuscule):
+                    for emoji in emojis:
+                        try:
+                            await message.add_reaction(emoji)
+                        except discord.HTTPException as e:
+                            print(f"Erreur réaction '{mot}' : {e}")
 
         PATTERNS_CORYSCLIPS = [
             'cory',
