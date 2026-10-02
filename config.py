@@ -63,7 +63,7 @@ GUILDS = {
                 "Name": "Calamity",
                 "CATEGORY_ID": 1448681953980321882,
                 "MEMBER": 1448771989996044368,
-                "COLEAD": 1504527597139263638,
+                "COLEAD": 1272636727600746571,
                 "SALON_ANNONCE_ID": 1524931670124400791,
                 "SALON_LOG_ID": None,
                 "SALON_NEW_MEMBERS": 1326945428796866621,
