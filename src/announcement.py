@@ -40,20 +40,26 @@ def creer_embed_mech(server_name: str, help1: str, help2: str, modos: list, desc
     embed.set_footer(text=f"{server_name} !")
     return embed, [FICHIER2, FICHIER]
 
-def creer_embed_smash(server_name: str, help1: str, help2: str, modos: list):
+def creer_embed_smash(server_name: str, help1: str, help2: str, modos: list, desc: str = None):
     nom_image = "resources/smashevent.png"
     nom_image2 = "resources/tapforce.png"
     FICHIER = discord.File(nom_image, filename=nom_image)
     FICHIER2 = discord.File(nom_image2, filename=nom_image2)
-    embed = discord.Embed(
-        title=f"<:mech:1487413876139102358> Rules of the Smash Event in {server_name} <:mech:1487413876139102358>",
-        description=(
+
+    if desc:
+        txt = desc
+    else:
+        txt = (
             "**1 -** Buy tickets at least once a day <:Pvpticket:1487183172134371388>\n"
             "**2 -** Use yours PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166> \n"
             "**3 -** Attack the boss once a day\n"
             "**4 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! <:smashpoint:1487425123718795367>\n"
             "**5 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
-        ),
+        )
+
+    embed = discord.Embed(
+        title=f"<:mech:1487413876139102358> Rules of the Smash Event in {server_name} <:mech:1487413876139102358>",
+        description=txt,
         color=discord.Color.gold(),
         timestamp=datetime.datetime.now()
     )
@@ -106,8 +112,8 @@ class AnnouncementsCog(commands.Cog):
             return
         help1, help2 = cc.get("help1", "0"), cc.get("help2", "0")
         modos = cc.get("modos", [])
-        embed, fichiers = creer_embed_smash(cc.get("Name", interaction.guild.name), help1, help2, modos)
-        embed.set_author(name=f"Announce by {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+        desc = cc.get("smash_description")
+        embed, fichiers = creer_embed_smash(cc.get("Name", interaction.guild.name), help1, help2, modos, desc)
         await interaction.response.send_message(embed=embed, files=fichiers)
 
     @tasks.loop(time=datetime.time(hour=0, minute=0, tzinfo=ZoneInfo("Europe/Paris")))
@@ -125,10 +131,11 @@ class AnnouncementsCog(commands.Cog):
                 salon = self.bot.get_channel(club_config.get("SALON_ANNONCE_ID"))
                 if not salon:
                     continue
-                if club_config.get("Name") in ("Surging Calamity", "Surge"):
+                if club_config.get("Name") in ("Surging Calamity", ""):
                     continue
 
                 desc = club_config.get("description")
+                smash_desc = club_config.get("smash_description")
                 server_name = club_config.get("Name") or (guild.name if guild else "Unknown")
 
                 help1 = club_config.get("help1", "0")
@@ -139,10 +146,10 @@ class AnnouncementsCog(commands.Cog):
                 if not member_role_id:
                     continue
                 
-                message_texte = f"📣 **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>\nI would like All club members to add a 🔥 reaction to the requirement points so we know you will follow the rules."
+                message_texte = f"<:announcement:1496817320440500335> **Event is coming ! Here is a quick reminder of the rules** <@&{member_role_id}>\nI would like All club members to add a 🔥 reaction to the requirement points so we know you will follow the rules."
 
                 if est_semaine_smash:
-                    mon_embed, mes_fichiers = creer_embed_smash(server_name, help1, help2, modos)
+                    mon_embed, mes_fichiers = creer_embed_smash(server_name, help1, help2, modos, smash_desc)
                 else:
                     mon_embed, mes_fichiers = creer_embed_mech(server_name, help1, help2, modos, desc)
 

@@ -72,16 +72,25 @@ GUILDS = {
                 "help2": 1387108158727782552,
                 "rules": 1524931670124400791,
                 "advice": 1387108158727782552,
-                "modos": ["AyaGus", "SteelOfDmcls", "HusGus", "Kazukaka"],
+                "modos": ["AyaGus", "HusGus", "Kazukaka"],
                 "description": (
                     "**1 -** Let the Spawner Hit Their Mechs First. All Mechs have a 30 Second Cooldown, Even Baby Mechs and Ascended Mechs. <a:research:1488144464835776622>\n"
-                    "**2 -** You Must Achieve at Least 400 Billion Damage\n"
-                    "**3 -** You Need to Summon a Minimum of 125 Boss Mechs \n"
+                    "**2 -** You Must Achieve at Least 400 Billion Damage <:goldphone:1488139733841346662>\n"
+                    "**3 -** You Need to Summon a Minimum of 125 Boss Mechs <:greyphone:1487424771200254013>\n"
                     "**4 -** Get to 75 Summons before the final day so all the mechs summoned are 240 or higher\n"
                     "**5 -** Summon and Kill 1 Mech in the first 24 hours, so your name appears in the Damage and Summons Leaderboard\n"
-                    f"**6 -** If there is anything you need regarding the event send a private message to : {' , '.join(f'**{m}**' for m in ['AyaGus', 'SteelOfDmcls', 'HusGus', 'Kazukaka'])}\n"
+                    f"**6 -** If there is anything you need regarding the event send a private message to : {' , '.join(f'**{m}**' for m in ['AyaGus', 'HusGus', 'Kazukaka'])}\n"
                     "**7 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
                     "\n\n-> If you have any issues regarding the requirements or will not be available to play the event, please let us know in advance"
+                ),
+                "smash_description": (
+                    "**1 -** Buy at least 2 tickets each day <:Pvpticket:1487183172134371388>\n"
+                    "**2 -** Use your PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166>\n"
+                    "**3 -** Attack the boss once a day\n"
+                    "**4 -** At the end of the day, we will see if we need more attacks\n"
+                    "**5 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! <:smashpoint:1487425123718795367>\n"
+                    f"**6 -** If there is anything you need regarding the event send a private message to : {' , '.join(f'**{m}**' for m in ['AyaGus', 'HusGus', 'Kazukaka'])}\n"
+                    "**7 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
                 ),
                 "screenshot_channels": [1463394745043914785,1466782565905076348],
             },
@@ -90,16 +99,33 @@ GUILDS = {
                 "CATEGORY_ID": 1448684653106954240,
                 "MEMBER": 1272636727588294824,
                 "COLEAD": 1272636727600746571,
-                "SALON_ANNONCE_ID": 1272636727600746574,
+                "SALON_ANNONCE_ID": 1272636727822913675,
                 "SALON_LOG_ID": None,
                 "SALON_NEW_MEMBERS": 1512185869237223664,
                 "ROUNDTABLE": 1512185869237223664,
                 "help1": 1387108158727782552,
                 "help2": 1387108158727782552,
-                "rules": 1272636727600746574,
+                "rules": 1272636727822913675,
                 "advice": 1387108158727782552,
-                "modos": ["CorysClips", "MattRYeo"],
-                # TODO : renseigner les salons où Surge poste ses screenshots de scores
+                "modos": ["ML_Navi", "MattRYeo", "HusGus"],
+                "description": (
+                    "**1 -** Let the Spawner Hit Their Mechs First. All Mechs have a 30 Second Cooldown, Even Baby Mechs and Ascended Mechs. <a:research:1488144464835776622>\n"
+                    "**2 -** You Must Achieve at Least 1 Trillion Damage <:goldphone:1488139733841346662>\n"
+                    "**3 -** You Need to defeat 600 locals mechs <:greyphone:1487424771200254013>\n"
+                    "**4 -** Summon and Kill 1 Mech in the first 24 hours, so your name appears in the Damage and Summons Leaderboard\n"
+                    f"**5 -** If there is anything you need regarding the event send a private message to : {' , '.join(f'**{m}**' for m in ['ML_Navi', 'MattRYeo', 'HusGus'])}\n"
+                    "**6 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
+                    "\n\n-> If you have any issues regarding the requirements or will not be available to play the event, please let us know in advance"
+                ),
+                "smash_description": (
+                    "**1 -** Buy all tickets each day <:Pvpticket:1487183172134371388>\n"
+                    "**2 -** Use your PvP tickets on day 1 until you get 4 boss tickets <:Bosstickets:1487183138273755166>\n"
+                    "**3 -** Attack the boss once a day\n"
+                    "**4 -** At the end of the day, we will see if we need more attacks\n"
+                    "**5 -** Use all your PvP tickets the last day (day 5) to take advantage of x2 points ! <:smashpoint:1487425123718795367>\n"
+                    f"**6 -** If there is anything you need regarding the event send a private message to : {' , '.join(f'**{m}**' for m in ['ML_Navi', 'MattRYeo', 'HusGus'])}\n"
+                    "**7 -** Enjoy ! <:netero_heart:1441402964483903540>\n"
+                ),
                 "screenshot_channels": [1272636727600746577,1409196858131087460],
             }
         }
