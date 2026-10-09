@@ -488,7 +488,7 @@ def rename_member_everywhere(guild_id: int, club_id: str, old: str, new: str):
 
     member["name"] = new
     save_members(guild_id, club_id, members)
-    return True, f"✏️ **{old}** renamed to **{new}** (updated in **{count}** event(s))."
+    return True, f" **{old}** renamed to **{new}** (updated in **{count}** event(s))."
 
 
 class RenameMemberModal(discord.ui.Modal):
@@ -595,8 +595,8 @@ class MemberConfigView(discord.ui.View):
         act = discord.ui.Select(
             placeholder="2 · Action",
             options=[
-                discord.SelectOption(label="Remove", value="remove", emoji="🗑️", default=(self.action == "remove")),
-                discord.SelectOption(label="Rename", value="rename", emoji="✏️", default=(self.action == "rename")),
+                discord.SelectOption(label="Remove", value="remove", emoji="", default=(self.action == "remove")),
+                discord.SelectOption(label="Rename", value="rename", emoji="", default=(self.action == "rename")),
             ],
             row=1
         )
@@ -677,7 +677,7 @@ class MemberConfigView(discord.ui.View):
         save_members(self.guild_id, self.club_id, members)
         name = self.selected
         self.selected = None
-        await self._refresh(interaction, f"🗑️ **{name}** has been removed from {self.cc.get('Name', self.club_id)}.")
+        await self._refresh(interaction, f" **{name}** has been removed from {self.cc.get('Name', self.club_id)}.")
 
     async def _on_close(self, interaction: discord.Interaction):
         if not await self._check_author(interaction):
