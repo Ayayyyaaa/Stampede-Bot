@@ -326,6 +326,410 @@ def chart_average_per_player(data: dict, guild_id: int, club_id: str, event_type
                 f"{val:,.0f}", ha="center", va="bottom", fontsize=8, color=COLORS["text"])
     return _buf(fig)
 
+# ── add_scores : application des scores + comparaison membres/participants 
+
+def _fmt_names(names, limit: int = 900) -> str:
+    text = ", ".join(sorted(names, key=str.lower))
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
+def apply_scores(guild_id: int, club_id: str, event_type: str, date: str, parsed: dict):
+    """Enregistre les scores. Retourne (event, added, updated) ou None si l'event n'existe pas."""
+    data = load_data(guild_id, club_id)
+    event = find_event(data, event_type, date)
+    if not event:
+        return None
+    added, updated = [], []
+    for player_name, score in parsed.items():
+        if player_name in event["scores"]:
+            updated.append((player_name, event["scores"][player_name], score))
+        else:
+            added.append((player_name, score))
+        event["scores"][player_name] = score
+    save_data(guild_id, club_id, data)
+    return event, added, updated
+
+
+def build_scores_embed(cc: dict, club_id: str, event_type: str, date: str,
+                       event: dict, added: list, updated: list, errors: list, author_name: str) -> discord.Embed:
+    total = sum(event["scores"].values())
+    embed = discord.Embed(
+        title=f"<:announcement:1496817320440500335> Club scores saved - {TYPE_LABEL[event_type]} · {date}",
+        color=discord.Color.green(),
+        timestamp=datetime.datetime.now()
+    )
+    if added:
+        lines = "\n".join(f"**{p}** → {s:,}" for p, s in added)
+        if len(lines) > 1024:
+            lines = lines[:1020] + "\n..."
+        embed.add_field(name=f"<a:terryx:1489284057920573660> Added ({len(added)})", value=lines, inline=False)
+    if updated:
+        lines = "\n".join(f"**{p}** → {new:,} *(was {old:,})*" for p, old, new in updated)
+        if len(lines) > 1024:
+            lines = lines[:1020] + "\n..."
+        embed.add_field(name=f"<:optis:1488294635519479918> Updated ({len(updated)})", value=lines, inline=False)
+    if errors:
+        embed.add_field(name=f"⚠️ Skipped ({len(errors)})", value="\n".join(errors)[:1024], inline=False)
+    embed.add_field(
+        name="<:top1:1489297584752168990> Club total",
+        value=f"{total:,}  ·  {len(event['scores'])} players registered",
+        inline=False
+    )
+    embed.set_footer(text=f"{cc.get('Name', club_id)} · By {author_name}")
+    return embed
+
+
+class ScoresMismatchView(discord.ui.View):
+    def __init__(self, author: discord.abc.User, guild_id: int, club_id: str, cc: dict,
+                 event_type: str, date: str, parsed: dict, errors: list):
+        super().__init__(timeout=120)
+        self.author = author
+        self.guild_id = guild_id
+        self.club_id = club_id
+        self.cc = cc
+        self.event_type = event_type
+        self.date = date
+        self.parsed = parsed
+        self.errors = errors
+        self.message = None
+
+    async def on_timeout(self):
+        if self.message:
+            try:
+                await self.message.edit(content="<:cerf:1499364067108847676> Confirmation timed out. **No scores were saved.**",
+                                        embed=None, view=None)
+            except discord.HTTPException:
+                pass
+
+    async def _check_author(self, btn: discord.Interaction) -> bool:
+        if btn.user.id != self.author.id:
+            await btn.response.send_message("❌ That button doesn't belong to you.", ephemeral=True)
+            return False
+        return True
+
+    async def _save(self, btn: discord.Interaction, sync_members: bool):
+        result = apply_scores(self.guild_id, self.club_id, self.event_type, self.date, self.parsed)
+        if result is None:
+            self.stop()
+            await btn.response.edit_message(
+                content="❌ This event no longer exists. No scores were saved.", embed=None, view=None)
+            return
+        event, added, updated = result
+
+        sync_note = None
+        if sync_members:
+            participants = set(event["scores"].keys())
+            members = load_members(self.guild_id, self.club_id)
+            current_names = {m["name"] for m in members}
+            removed = [m["name"] for m in members if m["name"] not in participants]
+            new_members = [m for m in members if m["name"] in participants]
+            joined = [p for p in participants if p not in current_names]
+            for p in joined:
+                new_members.append({"name": p, "discord_id": None})
+            save_members(self.guild_id, self.club_id, new_members)
+            sync_note = (f"Member list synced: **{len(joined)}** added, **{len(removed)}** removed.")
+
+        embed = build_scores_embed(self.cc, self.club_id, self.event_type, self.date,
+                                   event, added, updated, self.errors, self.author.display_name)
+        if sync_note:
+            embed.add_field(name="<:usefull:1488293835137093683> Members", value=sync_note, inline=False)
+        self.stop()
+        await btn.response.edit_message(content=None, embed=embed, view=None)
+
+    @discord.ui.button(label="Sync member list and save", style=discord.ButtonStyle.danger)
+    async def sync_and_save(self, btn: discord.Interaction, button: discord.ui.Button):
+        if await self._check_author(btn):
+            await self._save(btn, sync_members=True)
+
+    @discord.ui.button(label="Save anyway (not recommended)", style=discord.ButtonStyle.secondary)
+    async def save_only(self, btn: discord.Interaction, button: discord.ui.Button):
+        if await self._check_author(btn):
+            await self._save(btn, sync_members=False)
+
+    @discord.ui.button(label="Cancel", style=discord.ButtonStyle.secondary)
+    async def cancel(self, btn: discord.Interaction, button: discord.ui.Button):
+        if not await self._check_author(btn):
+            return
+        self.stop()
+        await btn.response.edit_message(
+            content="<:usefull:1488293835137093683> Score submission cancelled. **No scores were saved.**",
+            embed=None, view=None)
+
+
+# ── /member_config : gestion interactive des membres ─────────────────────────
+
+def rename_member_everywhere(guild_id: int, club_id: str, old: str, new: str):
+    """Renomme un membre dans la liste et dans tous les events.
+    Retourne (ok: bool, message: str)."""
+    old, new = old.strip(), new.strip()
+    if not new:
+        return False, "❌ The new name cannot be empty."
+    if old == new:
+        return False, "❌ Old and new names are identical."
+
+    members = load_members(guild_id, club_id)
+    member = find_member(members, old)
+    if not member:
+        return False, f"❌ **{old}** is no longer in the member list."
+    if find_member(members, new):
+        return False, f"❌ **{new}** is already in the member list."
+
+    data = load_data(guild_id, club_id)
+    if any(new in e["scores"] for e in data["events"]):
+        return False, (f"❌ **{new}** already has scores in some events. "
+                       f"Use `/rename` if you really want to merge them.")
+
+    count = 0
+    for e in data["events"]:
+        if old in e["scores"]:
+            e["scores"][new] = e["scores"].pop(old)
+            count += 1
+    save_data(guild_id, club_id, data)
+
+    member["name"] = new
+    save_members(guild_id, club_id, members)
+    return True, f"✏️ **{old}** renamed to **{new}** (updated in **{count}** event(s))."
+
+
+class RenameMemberModal(discord.ui.Modal):
+    def __init__(self, view: "MemberConfigView", old_name: str):
+        super().__init__(title="Rename member")
+        self.view_ref = view
+        self.old_name = old_name
+        self.new_name = discord.ui.TextInput(
+            label=f"New name for {old_name}"[:45],
+            max_length=100,
+            required=True
+        )
+        self.add_item(self.new_name)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        v = self.view_ref
+        ok, msg = rename_member_everywhere(v.guild_id, v.club_id, self.old_name, self.new_name.value)
+        if not ok:
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+        v.selected = self.new_name.value.strip()
+        await v._refresh(interaction, msg)
+
+
+class MemberConfigView(discord.ui.View):
+    PAGE_SIZE = 25
+
+    def __init__(self, author: discord.abc.User, guild_id: int, club_id: str, cc: dict):
+        super().__init__(timeout=300)
+        self.author = author
+        self.guild_id = guild_id
+        self.club_id = club_id
+        self.cc = cc
+        self.page = 0
+        self.selected = None   # nom du membre sélectionné
+        self.action = None     # "remove" | "rename"
+        self.message = None
+        self._build()
+
+    # ── données ──
+    def _members(self) -> list:
+        return sorted(load_members(self.guild_id, self.club_id), key=lambda m: m["name"].lower())
+
+    def _page_count(self, n: int) -> int:
+        return max(1, -(-n // self.PAGE_SIZE))
+
+    # ── rendu ──
+    def build_embed(self, status: str | None = None) -> discord.Embed:
+        members = self._members()
+        pages = self._page_count(len(members))
+        self.page = min(self.page, pages - 1)
+        start = self.page * self.PAGE_SIZE
+        chunk = members[start:start + self.PAGE_SIZE]
+
+        lines = []
+        for i, m in enumerate(chunk, start=start + 1):
+            tag = f"  <@{m['discord_id']}>" if m.get("discord_id") else ""
+            marker = "▶ " if m["name"] == self.selected else ""
+            lines.append(f"`{i}`  {marker}{m['name']}{tag}")
+        desc = "\n".join(lines) if lines else "*The member list is empty.*"
+        if status:
+            desc = f"{status}\n\n{desc}"
+
+        embed = discord.Embed(
+            title=f"<:players:1496861469583867987> {self.cc.get('Name', self.club_id)} - Member configuration",
+            description=desc,
+            color=discord.Color.dark_purple(),
+            timestamp=datetime.datetime.now()
+        )
+        embed.add_field(
+            name="Selection",
+            value=f"Member: **{self.selected or '—'}**\nAction: **{self.action or '—'}**",
+            inline=False
+        )
+        embed.set_footer(
+            text=f"Page {self.page + 1}/{pages} · {len(members)} members · "
+                 f"Rename asks for the new name when you click Apply"
+        )
+        return embed
+
+    def _build(self):
+        self.clear_items()
+        members = self._members()
+        pages = self._page_count(len(members))
+        self.page = min(self.page, pages - 1)
+        start = self.page * self.PAGE_SIZE
+        chunk = members[start:start + self.PAGE_SIZE]
+
+        # 1) Choix du membre (numéro + nom)
+        if chunk:
+            options = [
+                discord.SelectOption(
+                    label=f"{i}. {m['name']}"[:100],
+                    value=m["name"][:100],
+                    default=(m["name"] == self.selected)
+                )
+                for i, m in enumerate(chunk, start=start + 1)
+            ]
+            sel = discord.ui.Select(placeholder="1 · Member number", options=options, row=0)
+            sel.callback = self._on_member
+            self.add_item(sel)
+
+        # 2) Choix de l'action
+        act = discord.ui.Select(
+            placeholder="2 · Action",
+            options=[
+                discord.SelectOption(label="Remove", value="remove", emoji="🗑️", default=(self.action == "remove")),
+                discord.SelectOption(label="Rename", value="rename", emoji="✏️", default=(self.action == "rename")),
+            ],
+            row=1
+        )
+        act.callback = self._on_action
+        self.add_item(act)
+
+        # Boutons
+        if pages > 1:
+            prev_btn = discord.ui.Button(label="◀", style=discord.ButtonStyle.secondary, row=2, disabled=(self.page == 0))
+            prev_btn.callback = self._on_prev
+            self.add_item(prev_btn)
+            next_btn = discord.ui.Button(label="▶", style=discord.ButtonStyle.secondary, row=2, disabled=(self.page >= pages - 1))
+            next_btn.callback = self._on_next
+            self.add_item(next_btn)
+
+        apply_btn = discord.ui.Button(label="Apply", style=discord.ButtonStyle.primary, row=2)
+        apply_btn.callback = self._on_apply
+        self.add_item(apply_btn)
+
+        close_btn = discord.ui.Button(label="Close", style=discord.ButtonStyle.secondary, row=2)
+        close_btn.callback = self._on_close
+        self.add_item(close_btn)
+
+    async def _refresh(self, interaction: discord.Interaction, status: str | None = None):
+        self._build()
+        await interaction.response.edit_message(embed=self.build_embed(status), view=self)
+
+    async def _check_author(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author.id:
+            await interaction.response.send_message("❌ That menu doesn't belong to you.", ephemeral=True)
+            return False
+        return True
+
+    # ── callbacks ──
+    async def _on_member(self, interaction: discord.Interaction):
+        if not await self._check_author(interaction):
+            return
+        self.selected = interaction.data["values"][0]
+        await self._refresh(interaction)
+
+    async def _on_action(self, interaction: discord.Interaction):
+        if not await self._check_author(interaction):
+            return
+        self.action = interaction.data["values"][0]
+        await self._refresh(interaction)
+
+    async def _on_prev(self, interaction: discord.Interaction):
+        if not await self._check_author(interaction):
+            return
+        self.page = max(0, self.page - 1)
+        await self._refresh(interaction)
+
+    async def _on_next(self, interaction: discord.Interaction):
+        if not await self._check_author(interaction):
+            return
+        self.page += 1
+        await self._refresh(interaction)
+
+    async def _on_apply(self, interaction: discord.Interaction):
+        if not await self._check_author(interaction):
+            return
+        if not self.selected or not self.action:
+            await interaction.response.send_message("❌ Pick a member and an action first.", ephemeral=True)
+            return
+
+        if self.action == "rename":
+            await interaction.response.send_modal(RenameMemberModal(self, self.selected))
+            return
+
+        # remove
+        members = load_members(self.guild_id, self.club_id)
+        member = find_member(members, self.selected)
+        if not member:
+            self.selected = None
+            await self._refresh(interaction, "❌ That member is no longer in the list.")
+            return
+        members.remove(member)
+        save_members(self.guild_id, self.club_id, members)
+        name = self.selected
+        self.selected = None
+        await self._refresh(interaction, f"🗑️ **{name}** has been removed from {self.cc.get('Name', self.club_id)}.")
+
+    async def _on_close(self, interaction: discord.Interaction):
+        if not await self._check_author(interaction):
+            return
+        self.stop()
+        await interaction.response.edit_message(view=None)
+
+    async def on_timeout(self):
+        if self.message:
+            try:
+                await self.message.edit(view=None)
+            except discord.HTTPException:
+                pass
+
+
+# ── /view_event ──────────────────────────────────────────────────────────────
+
+def build_event_embed(cc: dict, club_id: str, event: dict) -> discord.Embed:
+    scores = sorted(event["scores"].items(), key=lambda x: x[1], reverse=True)
+    embed = discord.Embed(
+        title=f"<:calendar:1496816276780224512> {TYPE_LABEL[event['type']]} - {event['date']}",
+        description=event.get("description") or None,
+        color=discord.Color.from_str(COLORS["smash"] if event["type"] == "smash" else COLORS["mechs"]),
+        timestamp=datetime.datetime.now()
+    )
+
+    if not scores:
+        embed.add_field(name="Scores", value="*No scores registered yet.*", inline=False)
+    else:
+        # Un champ d'embed est limité à 1024 caractères : on découpe la liste
+        chunks, current = [], ""
+        for i, (player, score) in enumerate(scores, start=1):
+            line = f"`{i}` **{player}** → {score:,}\n"
+            if len(current) + len(line) > 1000:
+                chunks.append(current)
+                current = ""
+            current += line
+        if current:
+            chunks.append(current)
+
+        for idx, chunk in enumerate(chunks):
+            embed.add_field(name="Scores" if idx == 0 else "\u200b", value=chunk, inline=False)
+
+        total = sum(s for _, s in scores)
+        embed.add_field(
+            name="<:top1:1489297584752168990> Club total",
+            value=f"{total:,}  ·  {len(scores)} players  ·  avg {total / len(scores):,.0f}",
+            inline=False
+        )
+
+    embed.set_footer(text=f"{cc.get('Name', club_id)}")
+    return embed
 
 # ── Cog ───────────────────────────────────────────────────────────────────────
 
@@ -446,41 +850,40 @@ class ScoresCog(commands.Cog):
                 "First, create it using `/add_event`.", ephemeral=True)
             return
 
-        added, updated = [], []
-        for player_name, score in parsed.items():
-            if player_name in event["scores"]:
-                updated.append((player_name, event["scores"][player_name], score))
-            else:
-                added.append((player_name, score))
-            event["scores"][player_name] = score
+        # Participants de l'event après cet ajout = scores déjà enregistrés + ceux de cette commande
+        participants = set(event["scores"].keys()) | set(parsed.keys())
+        member_names = set(get_member_names(interaction.guild_id, club_id))
+        not_participated = member_names - participants
+        not_members = participants - member_names
 
-        save_data(interaction.guild_id, club_id, data)
-        total = sum(event["scores"].values())
+        # Identique : comportement inchangé
+        if not not_participated and not not_members:
+            event, added, updated = apply_scores(interaction.guild_id, club_id, event_type, date, parsed)
+            embed = build_scores_embed(cc, club_id, event_type, date, event, added, updated,
+                                       errors, interaction.user.display_name)
+            await interaction.response.send_message(embed=embed)
+            return
 
+        lines = ["<a:poussin:1499364053561114804> **Please note that club members are not the same as event participants:**"]
+        if not_participated:
+            lines.append(f"- {_fmt_names(not_participated)} are members of the club but did not participate in the event")
+        if not_members:
+            lines.append(f"- {_fmt_names(not_members)} participated in the event but are not club members")
+        lines.append(
+            "\nBefore saving the scores, you can *add all participants to the club members and remove members "
+            "who did not participate*, *add the scores without taking into account differences from the member "
+            "list (not recommended)*, or *cancel the score submission*. If it's just a name change for a member, "
+            "be sure to use `/rename`."
+        )
         embed = discord.Embed(
-            title=f"<:announcement:1496817320440500335> Club scores saved — {TYPE_LABEL[event_type]} · {date}",
-            color=discord.Color.green(),
-            timestamp=datetime.datetime.now()
+            title=f"{cc.get('Name', club_id)} - Members / participants mismatch",
+            description="\n".join(lines),
+            color=discord.Color.orange()
         )
-        if added:
-            lines = "\n".join(f"**{p}** → {s:,}" for p, s in added)
-            if len(lines) > 1024:
-                lines = lines[:1020] + "\n..."
-            embed.add_field(name=f"<a:terryx:1489284057920573660> Added ({len(added)})", value=lines, inline=False)
-        if updated:
-            lines = "\n".join(f"**{p}** → {new:,} *(was {old:,})*" for p, old, new in updated)
-            if len(lines) > 1024:
-                lines = lines[:1020] + "\n..."
-            embed.add_field(name=f"<:optis:1488294635519479918> Updated ({len(updated)})", value=lines, inline=False)
-        if errors:
-            embed.add_field(name=f"⚠️ Skipped ({len(errors)})", value="\n".join(errors)[:1024], inline=False)
-        embed.add_field(
-            name="<:top1:1489297584752168990> Club total",
-            value=f"{total:,}  ·  {len(event['scores'])} players registered",
-            inline=False
-        )
-        embed.set_footer(text=f"{cc.get('Name', club_id)} · By {interaction.user.display_name}")
-        await interaction.response.send_message(embed=embed)
+        view = ScoresMismatchView(interaction.user, interaction.guild_id, club_id, cc,
+                                  event_type, date, parsed, errors)
+        await interaction.response.send_message(embed=embed, view=view)
+        view.message = await interaction.original_response()
 
     @app_commands.command(name="clear_scores", description="Deletes **ALL** saved events and scores")
     @app_commands.describe(club="Which club (only needed on multi-club servers, guessed from the channel otherwise)")
@@ -688,6 +1091,20 @@ class ScoresCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(name="member_config", description="Remove or rename club members from the list")
+    @app_commands.describe(club="Which club (only needed on multi-club servers, guessed from the channel otherwise)")
+    async def member_config(self, interaction: discord.Interaction, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
+        if not gc:
+            return
+        if not any(r.id == cc["COLEAD"] for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Only co-leads can do that.", ephemeral=True)
+            return
+
+        view = MemberConfigView(interaction.user, interaction.guild_id, club_id, cc)
+        await interaction.response.send_message(embed=view.build_embed(), view=view)
+        view.message = await interaction.original_response()
+
     @app_commands.command(name="scores_club", description="Chart: Change in the club's total score")
     @app_commands.describe(
         event_type="Filter by type (optional)",
@@ -802,6 +1219,42 @@ class ScoresCog(commands.Cog):
         if len(data["events"]) > 15:
             embed.set_footer(text=f"Displaying the last 15 events out of a total of {len(data['events'])}.")
         await interaction.response.send_message(embed=embed)
+
+
+    @app_commands.command(name="view_event", description="Show the scores of all participants of an event")
+    @app_commands.describe(
+        date="Date of the event (YYYY-MM-DD). Leave empty for the latest event",
+        club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
+    )
+    async def view_event(self, interaction: discord.Interaction, date: str = None, club: str = None):
+        gc, club_id, cc = await resolve_club_or_error(interaction, club)
+        if not gc:
+            return
+
+        data = load_data(interaction.guild_id, club_id)
+        if not data["events"]:
+            await interaction.response.send_message("No events recorded.", ephemeral=True)
+            return
+
+        if date:
+            try:
+                datetime.datetime.strptime(date, "%Y-%m-%d")
+            except ValueError:
+                await interaction.response.send_message(
+                    "❌ Invalid date format. Use **YYYY-MM-DD**.", ephemeral=True)
+                return
+            events = [e for e in data["events"] if e["date"] == date]
+            if not events:
+                await interaction.response.send_message(
+                    f"❌ No event found for **{date}**. Use `/list_events` to see the recorded dates.",
+                    ephemeral=True)
+                return
+        else:
+            latest = max(e["date"] for e in data["events"])
+            events = [e for e in data["events"] if e["date"] == latest]
+
+        embeds = [build_event_embed(cc, club_id, e) for e in events]
+        await interaction.response.send_message(embeds=embeds)
 
     @app_commands.command(name="delete_event", description="Deletes an entire event and all its scores")
     @app_commands.describe(
