@@ -595,8 +595,8 @@ class MemberConfigView(discord.ui.View):
         act = discord.ui.Select(
             placeholder="2 · Action",
             options=[
-                discord.SelectOption(label="Remove", value="remove", emoji="", default=(self.action == "remove")),
-                discord.SelectOption(label="Rename", value="rename", emoji="", default=(self.action == "rename")),
+                discord.SelectOption(label="Remove", value="remove", default=(self.action == "remove")),
+                discord.SelectOption(label="Rename", value="rename", default=(self.action == "rename")),
             ],
             row=1
         )
