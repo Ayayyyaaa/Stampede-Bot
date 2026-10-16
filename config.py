@@ -59,8 +59,8 @@ GUILDS = {
             'bayrou': ['<:bayrou:1499124107936272415>']
         },
         "CLUBS": {
-            "calamity": {
-                "Name": "Calamity",
+            "seraphim": {
+                "Name": "Seraphim",
                 "CATEGORY_ID": 1448681953980321882,
                 "MEMBER": 1448771989996044368,
                 "COLEAD": 1272636727600746571,
@@ -94,8 +94,8 @@ GUILDS = {
                 ),
                 "screenshot_channels": [1463394745043914785,1466782565905076348],
             },
-            "surge": {
-                "Name": "Surge",
+            "morrow": {
+                "Name": "Morrow",
                 "CATEGORY_ID": 1448684653106954240,
                 "MEMBER": 1272636727588294824,
                 "COLEAD": 1272636727600746571,
