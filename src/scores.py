@@ -280,12 +280,17 @@ def chart_player_evolution(data: dict, player: str, event_type: str | None = Non
     return _buf(fig)
 
 
-def chart_average_per_player(data: dict, guild_id: int, club_id: str, event_type: str | None = None) -> BytesIO:
+def chart_average_per_player(data: dict, guild_id: int, club_id: str, event_type: str | None = None,
+                             nb_events: int | None = None) -> BytesIO:
     if event_type == "all":
         event_type = None
     events = data["events"]
     if event_type:
         events = [e for e in events if e["type"] == event_type]
+
+    # Ne garde que les nb_events derniers events (après filtre par type)
+    if nb_events:
+        events = sorted(events, key=lambda e: e["date"])[-nb_events:]
 
     if not events:
         label = f" of type **{TYPE_LABEL[event_type]}**" if event_type else ""
@@ -1161,6 +1166,7 @@ class ScoresCog(commands.Cog):
     @app_commands.command(name="scores_average", description="Chart: average score for each player")
     @app_commands.describe(
         event_type="Filter by type (optional)",
+        nb_events="Only use the last N events (default: all events)",
         club="Which club (only needed on multi-club servers, guessed from the channel otherwise)"
     )
     @app_commands.choices(event_type=[
@@ -1168,14 +1174,16 @@ class ScoresCog(commands.Cog):
         Choice(name="Smash", value="smash"),
         Choice(name="Mechs", value="mechs"),
     ])
-    async def scores_average(self, interaction: discord.Interaction, event_type: str = "all", club: str = None):
+    async def scores_average(self, interaction: discord.Interaction, event_type: str = "all",
+                             nb_events: app_commands.Range[int, 1] = None, club: str = None):
         gc, club_id, cc = await resolve_club_or_error(interaction, club)
         if not gc:
             return
         await interaction.response.defer()
         data = load_data(interaction.guild_id, club_id)
         try:
-            buf = chart_average_per_player(data, interaction.guild_id, club_id, None if event_type == "all" else event_type)
+            buf = chart_average_per_player(data, interaction.guild_id, club_id,
+                                           None if event_type == "all" else event_type, nb_events)
         except ValueError as e:
             await interaction.followup.send(f"❌ {e}", ephemeral=True)
             return
